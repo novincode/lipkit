@@ -11,10 +11,8 @@ license = ["SPDX:MIT"]
 
 blender_version_min = "4.2.0"
 
-# Optional: URLs
-[tags]
-categories = ["Animation", "Rigging"]
-keywords = ["lip-sync", "animation", "grease-pencil", "phoneme", "audio"]
+# Tags as simple list (required format)
+tags = ["animation", "rigging", "lip-sync", "grease-pencil"]
 
 [permissions]
 network = "Access phoneme extraction API"

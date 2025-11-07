@@ -19,19 +19,41 @@ LipKit is a professional-grade Blender extension that provides automatic lip syn
 
 ## 📦 Installation
 
+### Quick Install (Recommended)
+
+```bash
+# macOS/Linux
+chmod +x install.sh
+./install.sh
+
+# Windows (PowerShell)
+# Manually create symlink or copy folder (see below)
+```
+
 ### For Blender 4.2+
 
-1. Download the latest release
-2. Open Blender → Edit → Preferences → Get Extensions
-3. Install from Disk → Select `lipkit` folder
-4. Enable "LipKit" extension
+**Option 1: Automatic (macOS/Linux)**
+- Run `./install.sh` script
+- Restart Blender
+- Enable "LipKit" in Preferences → Get Extensions
 
-### Manual Installation
+**Option 2: Manual Installation**
+1. Copy the `lipsync-blender` folder to your Blender extensions directory:
+   - **macOS**: `~/Library/Application Support/Blender/4.2/extensions/user_default/lipkit`
+   - **Linux**: `~/.config/blender/4.2/extensions/user_default/lipkit`
+   - **Windows**: `%APPDATA%\Blender Foundation\Blender\4.2\extensions\user_default\lipkit`
 
-Copy the `lipkit` folder to your Blender extensions directory:
-- **Windows**: `%USERPROFILE%\AppData\Roaming\Blender Foundation\Blender\4.2\extensions\user_default\`
-- **macOS**: `~/Library/Application Support/Blender/4.2/extensions/user_default/`
-- **Linux**: `~/.config/blender/4.2/extensions/user_default/`
+2. Restart Blender
+3. Go to Edit → Preferences → Get Extensions
+4. Enable "LipKit"
+
+### Verify Installation
+
+In Blender's Python console:
+```python
+import lipkit
+print("✓ LipKit successfully installed!")
+```
 
 ## 🎯 Quick Start
 

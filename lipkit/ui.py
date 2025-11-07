@@ -15,7 +15,15 @@ class LIPKIT_PT_main(bpy.types.Panel):
     
     def draw(self, context):
         layout = self.layout
+        props = context.scene.lipkit
+        
         layout.label(text="Universal Lip Sync", icon='SPEAKER')
+        
+        # Quick status
+        if props.controller_object:
+            layout.label(text=f"✓ Controller: {props.controller_object.name}", icon='CHECKMARK')
+        else:
+            layout.operator("lipkit.create_controller", icon='PLUS', text="Create Controller")
 
 
 class LIPKIT_PT_audio(bpy.types.Panel):
