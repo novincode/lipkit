@@ -1,0 +1,7 @@
+This is a HEADLESS and SCALABLE project for lip syncing
+ALWAYS ADD docs inside /docs folder if needed
+Don't make too many random files, keep things organized
+
+
+After FINSIHING the structure, and everything, just make a few doc files about architecture, and other stuff
+Keep things organized
