@@ -276,17 +276,19 @@ class LIPKIT_OT_auto_map_targets(bpy.types.Operator):
         
         try:
             # DYNAMIC: detect from object type
-            if target_obj.type == 'GPENCIL':
+            if target_obj.type in ('GPENCIL', 'GREASEPENCIL'):
                 # Auto-map GP layers based on name
                 for mapping in props.phoneme_mappings:
                     phoneme = mapping.phoneme.lower()
                     
                     if hasattr(target_obj.data, 'layers'):
                         for layer in target_obj.data.layers:
-                            if phoneme in layer.info.lower():
+                            # Support both old (.info) and new (.name) attribute names
+                            layer_name = getattr(layer, 'name', None) or getattr(layer, 'info', None)
+                            if layer_name and phoneme in layer_name.lower():
                                 mapping.target_object = target_obj
-                                mapping.target_property = layer.info
-                                mapping.target_name = layer.info
+                                mapping.target_property = layer_name
+                                mapping.target_name = layer_name
                                 mapped_count += 1
                                 break
             
@@ -353,20 +355,26 @@ class LIPKIT_OT_select_mapping_target(bpy.types.Operator):
         
         box = layout.box()
         
-        # DYNAMIC: Check actual object type
-        if target_obj.type == 'GPENCIL':
+        obj_type = target_obj.type
+        
+        # DYNAMIC: Check actual object type - support both old and new GP type names
+        if obj_type in ('GPENCIL', 'GREASEPENCIL'):
             # Show GP layers
             if hasattr(target_obj.data, 'layers') and len(target_obj.data.layers) > 0:
                 box.label(text="GP Layers:", icon='GREASEPENCIL')
                 for layer in target_obj.data.layers:
-                    row = box.row()
-                    op = row.operator("lipkit.assign_mapping_target", text=layer.info, icon='LAYER_ACTIVE')
-                    op.mapping_index = self.mapping_index
-                    op.target_name = layer.info
+                    # Support both old (.info) and new (.name) attribute names
+                    layer_name = getattr(layer, 'name', None) or getattr(layer, 'info', None)
+                    if layer_name:
+                        row = box.row()
+                        op = row.operator("lipkit.assign_mapping_target", text=layer_name, icon='LAYER_ACTIVE')
+                        op.mapping_index = self.mapping_index
+                        op.target_name = layer_name
             else:
                 box.label(text="No layers found", icon='INFO')
+                box.label(text=f"Add layers to {target_obj.name} first")
         
-        elif target_obj.type == 'MESH':
+        elif obj_type == 'MESH':
             # Show shape keys
             if hasattr(target_obj.data, 'shape_keys') and target_obj.data.shape_keys:
                 box.label(text="Shape Keys:", icon='SHAPEKEY_DATA')
@@ -379,10 +387,15 @@ class LIPKIT_OT_select_mapping_target(bpy.types.Operator):
                     op.target_name = key.name
             else:
                 box.label(text="No shape keys found", icon='INFO')
+                box.label(text=f"Add shape keys to {target_obj.name} first")
         
         else:
-            box.label(text=f"Object type '{target_obj.type}' not supported yet", icon='ERROR')
-            box.label(text="Use MESH (shape keys) or GPENCIL (layers)")
+            box.label(text=f"Object type '{obj_type}' not supported", icon='ERROR')
+            box.label(text="Supported types:")
+            box.label(text="• MESH (for shape keys)")
+            box.label(text="• GPENCIL/GREASEPENCIL (for layers)")
+            box.label(text="")
+            box.label(text=f"Your object '{target_obj.name}' is type: {obj_type}")
 
 
 class LIPKIT_OT_assign_mapping_target(bpy.types.Operator):

@@ -21,13 +21,19 @@ def get_shape_keys(obj: bpy.types.Object) -> List[str]:
 
 def get_gp_layers(obj: bpy.types.Object) -> List[str]:
     """Get list of layer names from Grease Pencil object"""
-    if not obj or obj.type != 'GPENCIL':
+    if not obj or obj.type not in ('GPENCIL', 'GREASEPENCIL'):
         return []
     
     if not hasattr(obj.data, 'layers'):
         return []
     
-    return [layer.info for layer in obj.data.layers]
+    # Support both old (.info) and new (.name) attribute names
+    layers = []
+    for layer in obj.data.layers:
+        layer_name = getattr(layer, 'name', None) or getattr(layer, 'info', None)
+        if layer_name:
+            layers.append(layer_name)
+    return layers
 
 
 def get_shape_key_items(scene, context) -> List[Tuple[str, str, str]]:
@@ -86,7 +92,7 @@ def get_available_targets(context) -> List[Tuple[str, str, str]]:
     elif props.visual_system == 'gp_layer':
         # List GP objects with layers
         for obj in bpy.data.objects:
-            if obj.type == 'GPENCIL':
+            if obj.type in ('GPENCIL', 'GREASEPENCIL'):
                 has_layers = hasattr(obj.data, 'layers') and len(obj.data.layers) > 0
                 if has_layers:
                     items.append((obj.name, obj.name, f"GP Object: {obj.name}"))

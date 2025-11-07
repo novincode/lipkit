@@ -256,7 +256,7 @@ def quick_generate(
     mapping.target_object = target_object.name
     
     # Auto-map based on visual system type
-    if visual_system_type == "gp_layer" and target_object.type == 'GPENCIL':
+    if visual_system_type == "gp_layer" and target_object.type in ('GPENCIL', 'GREASEPENCIL'):
         # Try to auto-map layers
         for item in preset_data.get("mappings", []):
             phoneme = item["phoneme"]
@@ -265,8 +265,10 @@ def quick_generate(
             # Look for layer with matching name
             layer_name = None
             for layer in target_object.data.layers:
-                if phoneme.lower() in layer.info.lower():
-                    layer_name = layer.info
+                # Support both old (.info) and new (.name) attribute names
+                current_layer_name = getattr(layer, 'name', None) or getattr(layer, 'info', None)
+                if current_layer_name and phoneme.lower() in current_layer_name.lower():
+                    layer_name = current_layer_name
                     break
             
             if layer_name:

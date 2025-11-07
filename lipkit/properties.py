@@ -31,7 +31,7 @@ def get_gp_objects(self, context):
     items = [('NONE', 'None', 'No Grease Pencil object')]
     
     for obj in bpy.data.objects:
-        if obj.type == 'GPENCIL':
+        if obj.type in ('GPENCIL', 'GREASEPENCIL'):
             items.append((obj.name, obj.name, f"GP Object: {obj.name}"))
     
     return items

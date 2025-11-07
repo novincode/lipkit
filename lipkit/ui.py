@@ -193,7 +193,7 @@ class LIPKIT_PT_visual_system(bpy.types.Panel):
             obj = props.target_object
             box = layout.box()
             
-            if props.visual_system == 'gp_layer' and obj.type == 'GPENCIL':
+            if props.visual_system == 'gp_layer' and obj.type in ('GPENCIL', 'GREASEPENCIL'):
                 layer_count = len(obj.data.layers)
                 box.label(text=f"✓ {layer_count} GP layers found", icon='GREASEPENCIL')
             
@@ -238,7 +238,7 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
                 else:
                     box.label(text="⚠ No shape keys", icon='INFO')
             
-            elif obj_type == 'GPENCIL':
+            elif obj_type in ('GPENCIL', 'GREASEPENCIL'):
                 if hasattr(obj.data, 'layers'):
                     layer_count = len(obj.data.layers)
                     box.label(text=f"✓ {layer_count} GP layers", icon='GREASEPENCIL')
