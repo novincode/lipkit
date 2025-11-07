@@ -282,6 +282,9 @@ class LIPKIT_OT_auto_map_targets(bpy.types.Operator):
                     
                     for layer in target_obj.data.layers:
                         if phoneme in layer.info.lower():
+                            mapping.target_object = target_obj
+                            mapping.target_property = layer.info
+                            # Keep target_name for backwards compatibility
                             mapping.target_name = layer.info
                             mapped_count += 1
                             break
@@ -294,6 +297,9 @@ class LIPKIT_OT_auto_map_targets(bpy.types.Operator):
                         
                         for key in target_obj.data.shape_keys.key_blocks:
                             if phoneme in key.name.lower():
+                                mapping.target_object = target_obj
+                                mapping.target_property = key.name
+                                # Keep target_name for backwards compatibility
                                 mapping.target_name = key.name
                                 mapped_count += 1
                                 break
@@ -359,11 +365,18 @@ class LIPKIT_OT_generate(bpy.types.Operator):
             mapping.phoneme_set = props.phoneme_preset
             
             for item in props.phoneme_mappings:
-                if item.enabled and item.target_name:
+                # Use new object-based properties if available, fall back to target_name for compatibility
+                target_to_use = None
+                if item.target_object and item.target_property:
+                    target_to_use = item.target_property
+                elif item.target_name:
+                    target_to_use = item.target_name
+                
+                if item.enabled and target_to_use:
                     mapping.add_mapping(
                         item.phoneme,
                         item.phoneme_index,
-                        item.target_name
+                        target_to_use
                     )
             
             # Generate animation

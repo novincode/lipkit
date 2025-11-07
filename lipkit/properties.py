@@ -66,6 +66,20 @@ class LipKitPhonemeMappingItem(bpy.types.PropertyGroup):
         min=0
     )
     
+    # New object-based properties
+    target_object: PointerProperty(
+        name="Target Object",
+        description="Object with the animation target (mesh with shape keys or GP object)",
+        type=bpy.types.Object
+    )
+    
+    target_property: StringProperty(
+        name="Target Property",
+        description="Shape key name or GP layer name",
+        default=""
+    )
+    
+    # Legacy property (kept for backwards compatibility)
     target_name: StringProperty(
         name="Target",
         description="Name of target layer/shape key",

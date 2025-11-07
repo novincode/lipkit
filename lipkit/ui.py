@@ -226,34 +226,76 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
         row.prop(props, "phoneme_preset", text="Preset")
         row.operator("lipkit.load_preset", text="", icon='FILE_REFRESH')
         
-        # Auto-map button
-        layout.operator("lipkit.auto_map_targets", icon='AUTO')
+        # Target object selector (BEFORE auto-map)
+        layout.separator()
+        box = layout.box()
+        box.label(text="Animation Target:", icon='OBJECT_DATA')
+        box.prop(props, "target_object", text="")
+        
+        if props.target_object:
+            obj = props.target_object
+            obj_type = obj.type
+            
+            # Show what's available in this object
+            if obj_type == 'MESH':
+                if hasattr(obj.data, 'shape_keys') and obj.data.shape_keys:
+                    sk_count = len(obj.data.shape_keys.key_blocks) - 1
+                    box.label(text=f"✓ {sk_count} shape keys", icon='SHAPEKEY_DATA')
+                else:
+                    box.label(text="⚠ No shape keys", icon='INFO')
+            
+            elif obj_type == 'GPENCIL':
+                if hasattr(obj.data, 'layers'):
+                    layer_count = len(obj.data.layers)
+                    box.label(text=f"✓ {layer_count} GP layers", icon='GREASEPENCIL')
+                else:
+                    box.label(text="⚠ No layers", icon='INFO')
+            
+            else:
+                box.label(text=f"Object type: {obj_type}", icon='INFO')
+        
+        # Auto-map button (with target object selected)
+        layout.operator("lipkit.auto_map_targets", icon='AUTO', text="Auto-Map from Object")
         
         layout.separator()
         
-        # Mapping list
-        box = layout.box()
-        box.label(text="Mappings:", icon='LINENUMBERS_ON')
-        
+        # Mapping list with better UI
         if len(props.phoneme_mappings) == 0:
-            box.label(text="Load a preset to begin", icon='INFO')
+            box = layout.box()
+            box.label(text="No mappings yet", icon='INFO')
+            box.label(text="Select an object above, then click Auto-Map")
         else:
-            # Show first few mappings as example
-            for i, mapping in enumerate(props.phoneme_mappings[:5]):
+            box = layout.box()
+            box.label(text=f"Mappings ({len(props.phoneme_mappings)}):", icon='LINENUMBERS_ON')
+            
+            # Show mappings with better property selectors
+            for i, mapping in enumerate(props.phoneme_mappings[:6]):
                 row = box.row()
                 row.prop(mapping, "enabled", text="")
-                row.label(text=f"{mapping.phoneme} [{mapping.phoneme_index}]")
-                row.prop(mapping, "target_name", text="")
+                row.label(text=f"{mapping.phoneme}")
+                
+                # Show current target
+                if mapping.target_object:
+                    target_label = f"{mapping.target_object.name}"
+                    if mapping.target_property:
+                        target_label += f" → {mapping.target_property}"
+                    row.label(text=target_label, icon='PLAY')
+                else:
+                    row.label(text="(not set)", icon='QUESTION')
             
-            if len(props.phoneme_mappings) > 5:
-                box.label(text=f"... and {len(props.phoneme_mappings) - 5} more")
+            if len(props.phoneme_mappings) > 6:
+                box.label(text=f"... and {len(props.phoneme_mappings) - 6} more")
         
         # Stats
-        mapped_count = sum(1 for m in props.phoneme_mappings if m.target_name and m.enabled)
+        mapped_count = sum(1 for m in props.phoneme_mappings 
+                          if m.target_object and m.target_property and m.enabled)
         total_count = len(props.phoneme_mappings)
         
         if total_count > 0:
-            layout.label(text=f"Mapped: {mapped_count}/{total_count}", icon='CHECKMARK')
+            if mapped_count == total_count:
+                layout.label(text=f"✓ All {total_count} mapped", icon='CHECKMARK')
+            else:
+                layout.label(text=f"Mapped: {mapped_count}/{total_count}", icon='INFO')
 
 
 class LIPKIT_PT_controller(bpy.types.Panel):
