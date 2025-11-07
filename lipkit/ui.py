@@ -221,13 +221,7 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
         layout = self.layout
         props = context.scene.lipkit
         
-        # Preset selection
-        row = layout.row(align=True)
-        row.prop(props, "phoneme_preset", text="Preset")
-        row.operator("lipkit.load_preset", text="", icon='FILE_REFRESH')
-        
-        # Target object selector (BEFORE auto-map)
-        layout.separator()
+        # Target object selector FIRST
         box = layout.box()
         box.label(text="Animation Target:", icon='OBJECT_DATA')
         box.prop(props, "target_object", text="")
@@ -236,7 +230,7 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
             obj = props.target_object
             obj_type = obj.type
             
-            # Show what's available in this object
+            # Show what's available - DYNAMIC based on object type
             if obj_type == 'MESH':
                 if hasattr(obj.data, 'shape_keys') and obj.data.shape_keys:
                     sk_count = len(obj.data.shape_keys.key_blocks) - 1
@@ -252,50 +246,52 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
                     box.label(text="⚠ No layers", icon='INFO')
             
             else:
-                box.label(text=f"Object type: {obj_type}", icon='INFO')
-        
-        # Auto-map button (with target object selected)
-        layout.operator("lipkit.auto_map_targets", icon='AUTO', text="Auto-Map from Object")
+                box.label(text=f"⚠ Type '{obj_type}' not supported", icon='ERROR')
         
         layout.separator()
         
-        # Mapping list with better UI
+        # Preset selection (with settings icon for advanced)
+        row = layout.row(align=True)
+        row.prop(props, "phoneme_preset", text="Preset")
+        
+        layout.separator()
+        
+        # Manual mapping section
         if len(props.phoneme_mappings) == 0:
             box = layout.box()
-            box.label(text="No mappings yet", icon='INFO')
-            box.label(text="Select an object above, then click Auto-Map")
+            box.label(text="Load a preset first", icon='INFO')
+            layout.operator("lipkit.load_preset", text="Load Preset", icon='PRESET')
         else:
-            box = layout.box()
-            box.label(text=f"Mappings ({len(props.phoneme_mappings)}):", icon='LINENUMBERS_ON')
+            # Stats at top
+            mapped_count = sum(1 for m in props.phoneme_mappings 
+                              if m.target_object and m.target_property and m.enabled)
+            total_count = len(props.phoneme_mappings)
             
-            # Show mappings with better property selectors
-            for i, mapping in enumerate(props.phoneme_mappings[:6]):
-                row = box.row()
-                row.prop(mapping, "enabled", text="")
-                row.label(text=f"{mapping.phoneme}")
-                
-                # Show current target
-                if mapping.target_object:
-                    target_label = f"{mapping.target_object.name}"
-                    if mapping.target_property:
-                        target_label += f" → {mapping.target_property}"
-                    row.label(text=target_label, icon='PLAY')
-                else:
-                    row.label(text="(not set)", icon='QUESTION')
-            
-            if len(props.phoneme_mappings) > 6:
-                box.label(text=f"... and {len(props.phoneme_mappings) - 6} more")
-        
-        # Stats
-        mapped_count = sum(1 for m in props.phoneme_mappings 
-                          if m.target_object and m.target_property and m.enabled)
-        total_count = len(props.phoneme_mappings)
-        
-        if total_count > 0:
+            row = layout.row()
             if mapped_count == total_count:
-                layout.label(text=f"✓ All {total_count} mapped", icon='CHECKMARK')
+                row.label(text=f"✓ All {total_count} mapped", icon='CHECKMARK')
             else:
-                layout.label(text=f"Mapped: {mapped_count}/{total_count}", icon='INFO')
+                row.label(text=f"Mapped: {mapped_count}/{total_count}", icon='INFO')
+            
+            # Show ALL mappings in a scrollable list
+            box = layout.box()
+            box.label(text="Select Target for Each Sound:", icon='SPEAKER')
+            
+            for i, mapping in enumerate(props.phoneme_mappings):
+                # Each phoneme gets one clean row
+                row = box.row(align=True)
+                row.prop(mapping, "enabled", text="")
+                row.label(text=f"{mapping.phoneme}:")
+                
+                # Select button
+                row.operator("lipkit.select_mapping_target", text="Select", icon='EYEDROPPER').mapping_index = i
+                
+                # Show current mapping
+                if mapping.target_property:
+                    row.label(text=mapping.target_property, icon='CHECKMARK')
+                else:
+                    row.label(text="(not set)", icon='BLANK1')
+
 
 
 class LIPKIT_PT_controller(bpy.types.Panel):

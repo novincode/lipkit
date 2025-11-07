@@ -259,9 +259,9 @@ class LIPKIT_OT_load_preset(bpy.types.Operator):
 
 
 class LIPKIT_OT_auto_map_targets(bpy.types.Operator):
-    """Automatically map targets based on naming"""
+    """Quick-fill all mappings based on name matching (optional helper)"""
     bl_idname = "lipkit.auto_map_targets"
-    bl_label = "Auto-Map Targets"
+    bl_label = "Quick Auto-Map (Name Match)"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -269,28 +269,29 @@ class LIPKIT_OT_auto_map_targets(bpy.types.Operator):
         target_obj = props.target_object
         
         if not target_obj:
-            self.report({'ERROR'}, "No target object selected")
+            self.report({'ERROR'}, "Select a target object first")
             return {'CANCELLED'}
         
         mapped_count = 0
         
         try:
-            if props.visual_system == 'gp_layer' and target_obj.type == 'GPENCIL':
-                # Auto-map GP layers
+            # DYNAMIC: detect from object type
+            if target_obj.type == 'GPENCIL':
+                # Auto-map GP layers based on name
                 for mapping in props.phoneme_mappings:
                     phoneme = mapping.phoneme.lower()
                     
-                    for layer in target_obj.data.layers:
-                        if phoneme in layer.info.lower():
-                            mapping.target_object = target_obj
-                            mapping.target_property = layer.info
-                            # Keep target_name for backwards compatibility
-                            mapping.target_name = layer.info
-                            mapped_count += 1
-                            break
+                    if hasattr(target_obj.data, 'layers'):
+                        for layer in target_obj.data.layers:
+                            if phoneme in layer.info.lower():
+                                mapping.target_object = target_obj
+                                mapping.target_property = layer.info
+                                mapping.target_name = layer.info
+                                mapped_count += 1
+                                break
             
-            elif props.visual_system == 'shape_key':
-                # Auto-map shape keys
+            elif target_obj.type == 'MESH':
+                # Auto-map shape keys based on name
                 if hasattr(target_obj.data, 'shape_keys') and target_obj.data.shape_keys:
                     for mapping in props.phoneme_mappings:
                         phoneme = mapping.phoneme.lower()
@@ -299,17 +300,116 @@ class LIPKIT_OT_auto_map_targets(bpy.types.Operator):
                             if phoneme in key.name.lower():
                                 mapping.target_object = target_obj
                                 mapping.target_property = key.name
-                                # Keep target_name for backwards compatibility
                                 mapping.target_name = key.name
                                 mapped_count += 1
                                 break
             
-            self.report({'INFO'}, f"Auto-mapped {mapped_count} targets")
+            if mapped_count > 0:
+                self.report({'INFO'}, f"Auto-mapped {mapped_count} targets by name")
+            else:
+                self.report({'WARNING'}, "No matches found - use manual selection")
+            
             return {'FINISHED'}
         
         except Exception as e:
             self.report({'ERROR'}, f"Failed to auto-map: {str(e)}")
             return {'CANCELLED'}
+
+
+class LIPKIT_OT_select_mapping_target(bpy.types.Operator):
+    """Select target for a specific phoneme mapping"""
+    bl_idname = "lipkit.select_mapping_target"
+    bl_label = "Select Target"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    mapping_index: bpy.props.IntProperty(default=0)
+    
+    def execute(self, context):
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        props = context.scene.lipkit
+        
+        if self.mapping_index >= len(props.phoneme_mappings):
+            self.report({'ERROR'}, "Invalid mapping index")
+            return {'CANCELLED'}
+        
+        target_obj = props.target_object
+        if not target_obj:
+            self.report({'ERROR'}, "Select a target object first")
+            return {'CANCELLED'}
+        
+        # Build menu based on object type (dynamic!)
+        return context.window_manager.invoke_props_dialog(self, width=300)
+    
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.lipkit
+        mapping = props.phoneme_mappings[self.mapping_index]
+        target_obj = props.target_object
+        
+        layout.label(text=f"Select target for: {mapping.phoneme}", icon='SPEAKER')
+        layout.separator()
+        
+        box = layout.box()
+        
+        # DYNAMIC: Check actual object type
+        if target_obj.type == 'GPENCIL':
+            # Show GP layers
+            if hasattr(target_obj.data, 'layers') and len(target_obj.data.layers) > 0:
+                box.label(text="GP Layers:", icon='GREASEPENCIL')
+                for layer in target_obj.data.layers:
+                    row = box.row()
+                    op = row.operator("lipkit.assign_mapping_target", text=layer.info, icon='LAYER_ACTIVE')
+                    op.mapping_index = self.mapping_index
+                    op.target_name = layer.info
+            else:
+                box.label(text="No layers found", icon='INFO')
+        
+        elif target_obj.type == 'MESH':
+            # Show shape keys
+            if hasattr(target_obj.data, 'shape_keys') and target_obj.data.shape_keys:
+                box.label(text="Shape Keys:", icon='SHAPEKEY_DATA')
+                for key in target_obj.data.shape_keys.key_blocks:
+                    if key.name == "Basis":
+                        continue
+                    row = box.row()
+                    op = row.operator("lipkit.assign_mapping_target", text=key.name, icon='SHAPEKEY_DATA')
+                    op.mapping_index = self.mapping_index
+                    op.target_name = key.name
+            else:
+                box.label(text="No shape keys found", icon='INFO')
+        
+        else:
+            box.label(text=f"Object type '{target_obj.type}' not supported yet", icon='ERROR')
+            box.label(text="Use MESH (shape keys) or GPENCIL (layers)")
+
+
+class LIPKIT_OT_assign_mapping_target(bpy.types.Operator):
+    """Assign a target to a phoneme mapping"""
+    bl_idname = "lipkit.assign_mapping_target"
+    bl_label = "Assign"
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+    
+    mapping_index: bpy.props.IntProperty(default=0)
+    target_name: bpy.props.StringProperty(default="")
+    
+    def execute(self, context):
+        props = context.scene.lipkit
+        
+        if self.mapping_index >= len(props.phoneme_mappings):
+            return {'CANCELLED'}
+        
+        mapping = props.phoneme_mappings[self.mapping_index]
+        target_obj = props.target_object
+        
+        # Assign the mapping
+        mapping.target_object = target_obj
+        mapping.target_property = self.target_name
+        mapping.target_name = self.target_name  # Backwards compatibility
+        
+        self.report({'INFO'}, f"✓ {mapping.phoneme} → {self.target_name}")
+        return {'FINISHED'}
 
 
 class LIPKIT_OT_generate(bpy.types.Operator):
@@ -438,6 +538,8 @@ classes = [
     LIPKIT_OT_analyze_audio,
     LIPKIT_OT_load_preset,
     LIPKIT_OT_auto_map_targets,
+    LIPKIT_OT_select_mapping_target,
+    LIPKIT_OT_assign_mapping_target,
     LIPKIT_OT_generate,
     LIPKIT_OT_clear_animation,
 ]
