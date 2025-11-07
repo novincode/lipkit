@@ -129,8 +129,34 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.scene.lipkit
+        from .preferences import get_preferences
         
         layout.prop(props, "phoneme_provider", text="Engine")
+        
+        # Show Rhubarb path selector if LOCAL is selected
+        if props.phoneme_provider == 'LOCAL':
+            box = layout.box()
+            box.label(text="Rhubarb Setup:", icon='TOOL_SETTINGS')
+            
+            prefs = get_preferences(context)
+            tool_path = prefs.local_tool_path
+            
+            # Check status
+            if tool_path and os.path.exists(tool_path):
+                box.label(text="✅ Ready", icon='CHECKMARK')
+                box.label(text=os.path.basename(tool_path))
+            else:
+                box.label(text="❌ Not configured", icon='ERROR')
+            
+            # Simple folder selector
+            row = box.row()
+            row.scale_y = 1.3
+            row.operator("lipkit.select_rhubarb", text="Select Rhubarb Folder", icon='FILEBROWSER')
+            
+            # Info
+            box.label(text="Download, extract, select folder")
+            box.label(text="github.com/DanielSWolf/rhubarb-lip-sync")
+        
         layout.prop(props, "language")
         
         # Analyze button
@@ -321,7 +347,6 @@ class LIPKIT_PT_generate(bpy.types.Panel):
 
 # Registration
 classes = [
-    LIPKIT_PT_setup,
     LIPKIT_PT_main,
     LIPKIT_PT_audio,
     LIPKIT_PT_phoneme_engine,

@@ -44,78 +44,55 @@ class LIPKIT_OT_open_preferences(bpy.types.Operator):
 
 
 class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
-    """Select Rhubarb folder or executable"""
+    """Select folder containing Rhubarb"""
     bl_idname = "lipkit.select_rhubarb"
-    bl_label = "Select Rhubarb"
+    bl_label = "Select Rhubarb Folder"
     bl_options = {'REGISTER'}
     
-    filepath: bpy.props.StringProperty(
-        name="Rhubarb Executable or Folder",
-        description="Path to rhubarb executable or folder containing it",
-        subtype='FILE_PATH'
-    )
-    
-    filter_glob: bpy.props.StringProperty(
-        default="rhubarb;rhubarb.exe;*",
-        options={'HIDDEN'}
+    directory: bpy.props.StringProperty(
+        name="Rhubarb Folder",
+        description="Folder containing rhubarb executable",
+        subtype='DIR_PATH'
     )
     
     def execute(self, context):
-        from .preferences import get_preferences
         import os
+        from .preferences import get_preferences
         
-        if not self.filepath:
-            self.report({'ERROR'}, "No file selected")
+        if not self.directory:
+            self.report({'ERROR'}, "No folder selected")
             return {'CANCELLED'}
         
-        # Normalize path
-        path = os.path.normpath(self.filepath)
+        # Look for rhubarb in this directory
+        potential_paths = [
+            os.path.join(self.directory, "rhubarb"),
+            os.path.join(self.directory, "rhubarb.exe"),
+        ]
         
-        # If it's a directory, look for rhubarb inside it
-        if os.path.isdir(path):
-            # Try to find rhubarb in this directory
-            potential_paths = [
-                os.path.join(path, "rhubarb"),
-                os.path.join(path, "rhubarb.exe"),
-                os.path.join(path, "bin", "rhubarb"),
-                os.path.join(path, "bin", "rhubarb.exe"),
-            ]
-            
-            rhubarb_path = None
-            for potential in potential_paths:
-                if os.path.exists(potential):
-                    rhubarb_path = potential
-                    print(f"✓ Found rhubarb at: {rhubarb_path}")
-                    break
-            
-            if not rhubarb_path:
-                self.report({'ERROR'}, f"Rhubarb not found in: {path}\n\nTry selecting the rhubarb file directly")
-                return {'CANCELLED'}
-            
-            path = rhubarb_path
+        rhubarb_path = None
+        for path in potential_paths:
+            if os.path.exists(path):
+                rhubarb_path = path
+                break
         
-        # Verify it's executable
-        if not os.path.exists(path):
-            self.report({'ERROR'}, f"File not found: {path}")
+        if not rhubarb_path:
+            self.report({'ERROR'}, f"rhubarb not found in: {self.directory}")
             return {'CANCELLED'}
         
-        # Store the path in preferences
+        # Save to preferences
         prefs = get_preferences(context)
-        prefs.local_tool_path = path
+        prefs.local_tool_path = rhubarb_path
         
-        # Also try to save to addon preferences properly
+        # Also save to addon preferences
         try:
             for addon_name in context.preferences.addons.keys():
                 if "lipkit" in addon_name.lower():
-                    addon_prefs = context.preferences.addons[addon_name].preferences
-                    if addon_prefs:
-                        addon_prefs.local_tool_path = path
+                    context.preferences.addons[addon_name].preferences.local_tool_path = rhubarb_path
                     break
         except Exception as e:
-            print(f"Warning: Could not save to addon prefs: {e}")
+            print(f"Could not save to addon prefs: {e}")
         
-        self.report({'INFO'}, f"✅ Rhubarb configured: {path}")
-        print(f"✅ Rhubarb path saved: {path}")
+        self.report({'INFO'}, f"✅ Found: {os.path.basename(rhubarb_path)}")
         return {'FINISHED'}
     
     def invoke(self, context, event):
