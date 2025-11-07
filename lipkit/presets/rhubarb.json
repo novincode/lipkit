@@ -1,0 +1,52 @@
+{
+  "name": "Rhubarb (9 Shapes)",
+  "description": "Rhubarb Lip Sync mouth shapes (A-H, X)",
+  "phoneme_set": "rhubarb",
+  "mappings": [
+    {
+      "phoneme": "X",
+      "index": 0,
+      "description": "REST - Mouth closed, relaxed"
+    },
+    {
+      "phoneme": "A",
+      "index": 1,
+      "description": "Open mouth - father, hat"
+    },
+    {
+      "phoneme": "B",
+      "index": 2,
+      "description": "Lips closed - M, B, P"
+    },
+    {
+      "phoneme": "C",
+      "index": 3,
+      "description": "Wide mouth - see, tree, key"
+    },
+    {
+      "phoneme": "D",
+      "index": 4,
+      "description": "Tongue up - L, D, T, N"
+    },
+    {
+      "phoneme": "E",
+      "index": 5,
+      "description": "Rounded - go, toe, show"
+    },
+    {
+      "phoneme": "F",
+      "index": 6,
+      "description": "Lip to teeth - F, V"
+    },
+    {
+      "phoneme": "G",
+      "index": 7,
+      "description": "Tongue back - K, G, NG"
+    },
+    {
+      "phoneme": "H",
+      "index": 8,
+      "description": "Pursed lips - food, you, boot"
+    }
+  ]
+}

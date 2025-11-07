@@ -6,6 +6,18 @@ import bpy
 from bpy.props import StringProperty, BoolProperty
 
 
+class PreferencesDefaults:
+    """Fallback preferences object when addon prefs can't be loaded"""
+    def __init__(self):
+        self.use_cache = True
+        self.local_tool_path = ""
+        self.api_key = ""
+        self.api_endpoint = "https://api.lipkit.dev/extract"
+        self.custom_api_endpoint = ""
+        self.custom_api_key = ""
+        self.debug_mode = False
+
+
 class LipKitPreferences(bpy.types.AddonPreferences):
     bl_idname = "lipkit"
     
@@ -94,26 +106,35 @@ class LipKitPreferences(bpy.types.AddonPreferences):
         box.prop(self, "debug_mode")
 
 
-def get_preferences(context=None) -> LipKitPreferences:
+def get_preferences(context=None):
     """Get addon preferences - works with both addon and extension formats"""
     if context is None:
         context = bpy.context
     
-    # Try both "lipkit" and full module name
-    addons = context.preferences.addons
+    try:
+        addons = context.preferences.addons
+        
+        # Try direct name first
+        if "lipkit" in addons:
+            prefs = addons["lipkit"].preferences
+            if prefs is not None:
+                return prefs
+        
+        # Try with package name if it's an extension
+        for addon_name in addons.keys():
+            if "lipkit" in addon_name.lower():
+                prefs = addons[addon_name].preferences
+                if prefs is not None:
+                    return prefs
+        
+        # If not found, return defaults
+        print("⚠️ LipKit preferences not found in Blender - using defaults")
+        return PreferencesDefaults()
     
-    # Try direct name first
-    if "lipkit" in addons:
-        return addons["lipkit"].preferences
-    
-    # Try with package name if it's an extension
-    for addon_name in addons.keys():
-        if "lipkit" in addon_name.lower():
-            return addons[addon_name].preferences
-    
-    # If not found, return defaults (non-blocking)
-    print(f"⚠ LipKit preferences not found. Available addons: {list(addons.keys())}")
-    return LipKitPreferences()
+    except Exception as e:
+        print(f"⚠️ Error getting preferences ({e}) - using defaults")
+        # Return fallback with defaults
+        return PreferencesDefaults()
 
 
 def register():

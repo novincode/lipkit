@@ -160,11 +160,12 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
         name="Preset",
         description="Phoneme mapping preset",
         items=[
+            ('rhubarb', 'Rhubarb (A-H, X)', 'For use with Rhubarb Lip Sync tool'),
             ('preston_blair', 'Preston Blair (9)', 'Classic 2D animation'),
             ('arpabet', 'ARPAbet', 'Full English phoneme set'),
             ('custom', 'Custom', 'Custom mapping'),
         ],
-        default='preston_blair'
+        default='rhubarb'
     )
     
     phoneme_mappings: CollectionProperty(
