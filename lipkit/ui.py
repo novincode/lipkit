@@ -3,6 +3,55 @@ UI Panels for LipKit
 """
 
 import bpy
+import os
+
+
+class LIPKIT_PT_setup(bpy.types.Panel):
+    """Setup panel - shows at the top"""
+    bl_label = "Setup"
+    bl_idname = "LIPKIT_PT_setup"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "LipKit"
+    bl_options = {'DEFAULT_CLOSED'}
+    
+    def draw(self, context):
+        layout = self.layout
+        
+        from .preferences import get_preferences
+        prefs = get_preferences(context)
+        
+        # Tool status
+        box = layout.box()
+        box.label(text="Rhubarb Lip Sync Tool:", icon='TOOL_SETTINGS')
+        
+        # Check if tool is configured and exists
+        tool_configured = bool(prefs.local_tool_path)
+        tool_exists = tool_configured and os.path.exists(prefs.local_tool_path)
+        
+        if not tool_configured:
+            box.label(text="❌ Not configured", icon='ERROR')
+            box.label(text="Click button below to set up")
+        elif not tool_exists:
+            box.label(text="❌ File not found", icon='ERROR')
+            box.label(text=f"Path: {prefs.local_tool_path}", icon='QUESTION')
+        else:
+            box.label(text="✅ Ready", icon='CHECKMARK')
+            row = box.row()
+            row.label(text=os.path.basename(prefs.local_tool_path))
+        
+        # Quick setup button
+        row = layout.row()
+        row.scale_y = 1.3
+        row.operator("lipkit.open_preferences", text="Configure Tool Path", icon='PREFERENCES')
+        
+        # Download link
+        layout.separator()
+        col = layout.column()
+        col.label(text="Need Rhubarb?", icon='URL')
+        col.label(text="Download from:")
+        col.label(text="github.com/DanielSWolf/")
+        col.label(text="rhubarb-lip-sync")
 
 
 class LIPKIT_PT_main(bpy.types.Panel):
@@ -258,6 +307,7 @@ class LIPKIT_PT_generate(bpy.types.Panel):
 
 # Registration
 classes = [
+    LIPKIT_PT_setup,
     LIPKIT_PT_main,
     LIPKIT_PT_audio,
     LIPKIT_PT_phoneme_engine,

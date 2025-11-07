@@ -23,6 +23,26 @@ def get_cached_phoneme_data():
     return _phoneme_data_cache
 
 
+class LIPKIT_OT_open_preferences(bpy.types.Operator):
+    """Open LipKit preferences to configure tool path"""
+    bl_idname = "lipkit.open_preferences"
+    bl_label = "Open Preferences"
+    bl_options = {'REGISTER'}
+    
+    def execute(self, context):
+        # Open preferences window with LipKit extension selected
+        bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
+        
+        # Try to navigate to extensions (this might not work in all Blender versions)
+        try:
+            context.preferences.active_section = 'EXTENSIONS'
+        except:
+            pass
+        
+        self.report({'INFO'}, "Set 'Local Tool Path' to your rhubarb executable")
+        return {'FINISHED'}
+
+
 class LIPKIT_OT_create_controller(bpy.types.Operator):
     """Create a new LipKit controller object"""
     bl_idname = "lipkit.create_controller"
@@ -343,6 +363,7 @@ class LIPKIT_OT_clear_animation(bpy.types.Operator):
 
 # Registration
 classes = [
+    LIPKIT_OT_open_preferences,
     LIPKIT_OT_create_controller,
     LIPKIT_OT_analyze_audio,
     LIPKIT_OT_load_preset,

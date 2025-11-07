@@ -116,34 +116,48 @@ class LocalPhonemeProvider(PhonemeProvider):
             raise ExtractionError(f"Phoneme extraction failed: {str(e)}")
     
     def _run_rhubarb(self, audio_path: str, language: str) -> str:
-        """Run Rhubarb Lip Sync tool"""
-        # Rhubarb command: rhubarb -f json audio.wav
-        # Output format: JSON with mouthCues array
+        """Run Rhubarb Lip Sync tool
+        
+        Rhubarb command format:
+        rhubarb [options] <input file>
+        
+        Returns JSON to stdout by default
+        """
         
         cmd = [
             self.tool_path,
             "-f", "json",  # JSON output format
-            audio_path
+            "-r", "pocketSphinx",  # Recognizer (pocketSphinx is most accurate)
+            audio_path  # Input audio file
         ]
         
-        # Add recognizer (default is pocketsphinx)
-        # Rhubarb has 'pocketsphinx' (better) or 'phonetic' (faster but less accurate)
-        cmd.extend(["--recognizer", "pocketsphinx"])
+        print(f"🎤 Running Rhubarb: {' '.join(cmd)}")
         
-        print(f"Running: {' '.join(cmd)}")
-        
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minute timeout
-        )
-        
-        if result.returncode != 0:
-            error_msg = result.stderr or result.stdout or "Unknown error"
-            raise ExtractionError(f"Rhubarb failed: {error_msg}")
-        
-        return result.stdout
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+                check=False  # Don't raise on non-zero exit
+            )
+            
+            # Rhubarb sometimes prints warnings to stderr but still succeeds
+            if result.returncode != 0:
+                error_msg = result.stderr or result.stdout or "Unknown error"
+                print(f"❌ Rhubarb error output:\n{error_msg}")
+                raise ExtractionError(f"Rhubarb failed with code {result.returncode}:\n{error_msg}")
+            
+            # Check if we got JSON output
+            output = result.stdout.strip()
+            if not output or not output.startswith('{'):
+                raise ExtractionError(f"Rhubarb didn't return JSON. Output:\n{output}\nStderr:\n{result.stderr}")
+            
+            print(f"✅ Rhubarb succeeded - received {len(output)} bytes of JSON")
+            return output
+            
+        except subprocess.TimeoutExpired:
+            raise ExtractionError("Rhubarb timed out after 5 minutes")
     
     def _parse_rhubarb_output(self, output: str, audio_path: str) -> LipSyncData:
         """Parse Rhubarb JSON output into LipSyncData
