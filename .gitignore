@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Blender
+*.blend1
+*.blend2
+*.blend@
+*.blend#
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache & Temp
+cache/
+temp/
+*.tmp
+*.log
+
+# API Keys & Secrets
+*.env
+secrets.json
+api_keys.txt
+
+# Test files
+test_audio/
+test_output/

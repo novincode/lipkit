@@ -1,0 +1,22 @@
+schema_version = "1.0.0"
+
+id = "lipkit"
+name = "LipKit"
+tagline = "Universal Lip Sync for 2D & 3D"
+version = "0.1.0"
+type = "add-on"
+
+maintainer = "LipKit Team <contact@lipkit.dev>"
+license = ["SPDX:MIT"]
+
+blender_version_min = "4.2.0"
+
+# Optional: URLs
+[tags]
+categories = ["Animation", "Rigging"]
+keywords = ["lip-sync", "animation", "grease-pencil", "phoneme", "audio"]
+
+[permissions]
+network = "Access phoneme extraction API"
+files = "Read audio files and write presets"
+clipboard = "Copy/paste mapping presets"

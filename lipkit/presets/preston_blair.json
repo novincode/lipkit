@@ -1,0 +1,52 @@
+{
+  "name": "Preston Blair (9 Shapes)",
+  "description": "Classic 2D animation mouth shapes",
+  "phoneme_set": "preston_blair",
+  "mappings": [
+    {
+      "phoneme": "REST",
+      "index": 0,
+      "description": "Mouth closed, neutral expression"
+    },
+    {
+      "phoneme": "AH",
+      "index": 1,
+      "description": "Open mouth, father, hot"
+    },
+    {
+      "phoneme": "EE",
+      "index": 2,
+      "description": "Wide mouth, see, tree"
+    },
+    {
+      "phoneme": "OH",
+      "index": 3,
+      "description": "Round mouth, go, show"
+    },
+    {
+      "phoneme": "OO",
+      "index": 4,
+      "description": "Pursed lips, moon, you"
+    },
+    {
+      "phoneme": "M",
+      "index": 5,
+      "description": "Lips closed, M, B, P sounds"
+    },
+    {
+      "phoneme": "F",
+      "index": 6,
+      "description": "Lower lip to teeth, F, V"
+    },
+    {
+      "phoneme": "L",
+      "index": 7,
+      "description": "Tongue to roof, L, D, T"
+    },
+    {
+      "phoneme": "S",
+      "index": 8,
+      "description": "Teeth together, S, Z"
+    }
+  ]
+}
