@@ -57,7 +57,6 @@ class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
     
     def execute(self, context):
         import os
-        from .preferences import get_preferences
         
         if not self.directory:
             self.report({'ERROR'}, "No folder selected")
@@ -79,20 +78,19 @@ class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
             self.report({'ERROR'}, f"rhubarb not found in: {self.directory}")
             return {'CANCELLED'}
         
-        # Save to preferences
-        prefs = get_preferences(context)
-        prefs.local_tool_path = rhubarb_path
+        # Save to SCENE properties (this persists!)
+        context.scene.lipkit.rhubarb_path = rhubarb_path
         
-        # Also save to addon preferences
+        # Also try preferences (but scene is more reliable)
+        from .preferences import get_preferences
         try:
-            for addon_name in context.preferences.addons.keys():
-                if "lipkit" in addon_name.lower():
-                    context.preferences.addons[addon_name].preferences.local_tool_path = rhubarb_path
-                    break
-        except Exception as e:
-            print(f"Could not save to addon prefs: {e}")
+            prefs = get_preferences(context)
+            prefs.local_tool_path = rhubarb_path
+        except:
+            pass
         
-        self.report({'INFO'}, f"✅ Found: {os.path.basename(rhubarb_path)}")
+        print(f"✅ Rhubarb saved to scene: {rhubarb_path}")
+        self.report({'INFO'}, f"✅ Ready: {os.path.basename(rhubarb_path)}")
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -206,7 +204,8 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
     def _get_provider(self, props, prefs):
         """Get the appropriate phoneme provider"""
         if props.phoneme_provider == 'LOCAL':
-            return LocalPhonemeProvider(tool_path=prefs.local_tool_path)
+            # Use Rhubarb path from scene properties
+            return LocalPhonemeProvider(tool_path=props.rhubarb_path)
         
         elif props.phoneme_provider == 'API':
             return APIPhonemeProvider(
@@ -221,7 +220,7 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
             )
         
         else:
-            return LocalPhonemeProvider()
+            return LocalPhonemeProvider(tool_path=props.rhubarb_path)
 
 
 class LIPKIT_OT_load_preset(bpy.types.Operator):

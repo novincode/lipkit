@@ -129,7 +129,6 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         props = context.scene.lipkit
-        from .preferences import get_preferences
         
         layout.prop(props, "phoneme_provider", text="Engine")
         
@@ -138,8 +137,7 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
             box = layout.box()
             box.label(text="Rhubarb Setup:", icon='TOOL_SETTINGS')
             
-            prefs = get_preferences(context)
-            tool_path = prefs.local_tool_path
+            tool_path = props.rhubarb_path
             
             # Check status
             if tool_path and os.path.exists(tool_path):

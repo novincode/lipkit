@@ -107,6 +107,13 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
     )
     
     # Phoneme Engine Section
+    rhubarb_path: StringProperty(
+        name="Rhubarb Path",
+        description="Path to Rhubarb executable",
+        subtype='FILE_PATH',
+        default=""
+    )
+    
     phoneme_provider: EnumProperty(
         name="Phoneme Provider",
         description="Method for extracting phonemes from audio",
