@@ -1,271 +1,138 @@
-# LipKit - Universal Lip Sync for Blender
+# 🎬 LipKit - Universal Lip Sync for Blender
 
-**Headless, scalable lip sync system for 2D and 3D animations**
+**Automatic lip sync for 2D (Grease Pencil) and 3D (Shape Keys) animations.**
 
-LipKit is a professional-grade Blender extension that provides automatic lip synchronization for both 2D (Grease Pencil) and 3D (Shape Keys) workflows. Built with a clean, extensible architecture that keeps your timeline organized.
-
-## 🚀 Features
-
-- **Universal System**: Works with Grease Pencil layers, Shape Keys, and extensible for custom systems
-- **Clean Timeline**: Single controller property drives all animations via drivers - no cluttered timeline!
-- **Multiple Phoneme Engines**:
-  - **Local (Free)**: Use Rhubarb or Allosaurus locally, no internet required
-  - **Cloud API (Premium)**: High-accuracy cloud extraction with multi-language support
-  - **Custom API**: Connect your own phoneme extraction service
-- **Audio Sources**: Load from file or use Video Sequence Editor strips
-- **Preset System**: Preston Blair (9 shapes) and ARPAbet included, create custom mappings
-- **Non-Destructive**: Optional NLA strip output for layered workflows
-- **Cache System**: Speeds up iteration by caching phoneme data
-
-## 📦 Installation
-
-### Quick Install (Recommended)
-
-```bash
-# macOS/Linux
-chmod +x install.sh
-./install.sh
-
-# Windows (PowerShell)
-# Manually create symlink or copy folder (see below)
-```
-
-### For Blender 4.2+
-
-**Option 1: Automatic (macOS/Linux)**
-- Run `./install.sh` script
-- Restart Blender
-- Enable "LipKit" in Preferences → Get Extensions
-
-**Option 2: Manual Installation**
-1. Copy the `lipsync-blender` folder to your Blender extensions directory:
-   - **macOS**: `~/Library/Application Support/Blender/4.2/extensions/user_default/lipkit`
-   - **Linux**: `~/.config/blender/4.2/extensions/user_default/lipkit`
-   - **Windows**: `%APPDATA%\Blender Foundation\Blender\4.2\extensions\user_default\lipkit`
-
-2. Restart Blender
-3. Go to Edit → Preferences → Get Extensions
-4. Enable "LipKit"
-
-### Verify Installation
-
-In Blender's Python console:
-```python
-import lipkit
-print("✓ LipKit successfully installed!")
-```
-
-## 🎯 Quick Start
-
-### 2D Animation (Grease Pencil)
-
-1. **Prepare Your Mouth Drawings**:
-   - Create a Grease Pencil object
-   - Draw different mouth shapes on separate layers
-   - Name layers: "Mouth_AH", "Mouth_EE", "Mouth_M", etc.
-
-2. **Set Up LipKit**:
-   - Open sidebar (N key) → LipKit tab
-   - **Audio Source**: Select your audio file or VSE strip
-   - **Phoneme Engine**: Choose "Local (Free)" for testing
-   - Click "Analyze Audio"
-
-3. **Configure Visual System**:
-   - **Visual System**: Select "Grease Pencil Layers"
-   - **Target Object**: Select your GP object
-   - **Preset**: Choose "Preston Blair (9)"
-   - Click "Load Preset"
-   - Click "Auto-Map Targets" to match layers
-
-4. **Generate**:
-   - Click "Create Controller" (creates the single control object)
-   - Set start frame
-   - Click "🚀 Generate Lip Sync"
-
-Done! Your mouth shapes will automatically switch based on the audio.
-
-### 3D Animation (Shape Keys)
-
-1. **Prepare Shape Keys**:
-   - Select your head mesh
-   - Add shape keys for different mouth positions
-   - Name them: "AH", "EE", "OH", "M", etc.
-
-2. **Follow same steps as above**, but:
-   - **Visual System**: Select "Shape Keys (3D)"
-   - Rest is identical!
-
-## 🎨 How It Works
-
-### The Controller System
-
-Unlike traditional lip sync that clutters your timeline with hundreds of keyframes across multiple layers, LipKit uses a **single controller property**:
-
-1. **Controller Object** holds one custom property: `phoneme_index` (integer)
-2. **Keyframes** are placed only on this property (CONSTANT interpolation)
-3. **Drivers** on your mouth targets read the controller value
-4. Each driver shows/hides its target when `phoneme_index` matches
-
-**Result**: Clean timeline with one animated channel controlling everything!
-
-### Phoneme → Viseme Mapping
-
-LipKit intelligently reduces phonemes to visemes (visual mouth shapes):
-
-- **ARPAbet phonemes** (40+) → **Preston Blair visemes** (9 shapes)
-- Example: "AA", "AE", "AH" all map to "AH" viseme
-- Customizable for your art style
-
-## 📚 Presets
-
-### Preston Blair (9 Shapes)
-Classic 2D animation standard:
-- **REST**: Closed mouth
-- **AH**: Open (father, hot)
-- **EE**: Wide (see, tree)
-- **OH**: Round (go, show)
-- **OO**: Pursed (moon, you)
-- **M**: Lips closed (M, B, P)
-- **F**: Lip to teeth (F, V)
-- **L**: Tongue up (L, D, T)
-- **S**: Teeth together (S, Z)
-
-### ARPAbet
-Full English phoneme set with 40+ sounds mapped to 9 visemes.
-
-## ⚙️ Configuration
-
-### Preferences (Edit → Preferences → Extensions → LipKit)
-
-**Local Tool**:
-- Set path to Rhubarb or Allosaurus executable
-- Enable cache for faster iteration
-
-**Cloud API**:
-- Enter API key from lipkit.dev
-- Premium features: better accuracy, more languages
-
-**Custom API**:
-- Point to your own phoneme extraction service
-- Must return LipKit JSON format
-
-## 🔧 Advanced Usage
-
-### Custom Mappings
-
-Create your own phoneme sets:
-
-```python
-# In Python API or operator
-from lipkit.core import PhonemeMapping
-
-mapping = PhonemeMapping()
-mapping.add_mapping("AH", 0, "MyLayer_Open")
-mapping.add_mapping("EE", 1, "MyLayer_Smile")
-mapping.save_to_file("my_preset.json")
-```
-
-### Programmatic Generation
-
-```python
-import bpy
-from lipkit.core import AnimationEngine, LipSyncController
-from lipkit.phoneme_providers import LocalPhonemeProvider
-
-# Extract phonemes
-provider = LocalPhonemeProvider()
-lipsync_data = provider.extract_phonemes("/path/to/audio.wav")
-
-# Create controller
-controller = LipSyncController.create_controller()
-
-# Generate (simplified - see full docs)
-engine = AnimationEngine(lipsync_data, mapping, controller)
-results = engine.generate(target_object, start_frame=1)
-```
-
-## 🐛 Troubleshooting
-
-### "Provider not available"
-- **Local**: Install Rhubarb or Allosaurus, set path in preferences
-- **API**: Check API key, internet connection
-
-### "No mappings"
-- Load a preset first, then run Auto-Map Targets
-- Or manually set target names for each phoneme
-
-### "Shape keys not found"
-- Ensure mesh has shape keys: Mesh → Shape Keys → Add Shape Key
-- Must have both Basis and at least one other shape key
-
-### Timeline is cluttered
-- You're not using LipKit correctly!
-- Should only see one property animated: Controller's `phoneme_index`
-- Check that drivers are created (Graph Editor → Drivers)
-
-## 📖 Documentation
-
-Full documentation in `/docs`:
-- `ARCHITECTURE.md`: Technical design and internals
-- `API.md`: Python API reference
-- `USER_GUIDE.md`: Complete user manual
-- `DEVELOPMENT.md`: Contributing guide
-
-## 🤝 Contributing
-
-LipKit is open source! Contributions welcome:
-
-1. Fork the repository
-2. Create feature branch
-3. Make changes
-4. Submit pull request
-
-### Extending LipKit
-
-Add your own visual system:
-
-```python
-from lipkit.visual_systems import VisualSystem, register_visual_system
-
-class MyCustomSystem(VisualSystem):
-    @property
-    def system_type(self):
-        return "my_system"
-    
-    def create_driver(self, controller, target, phoneme_index, **kwargs):
-        # Your driver creation logic
-        pass
-
-register_visual_system("my_system", MyCustomSystem())
-```
-
-## 📜 License
-
-MIT License - See LICENSE file
-
-## 💰 Premium Features
-
-### LipKit Cloud API
-
-- **Higher accuracy**: ML-powered phoneme detection
-- **Multi-language**: English, Spanish, French, German, Japanese, and more
-- **Batch processing**: Process multiple files
-- **Priority support**
-
-Get API key at: **lipkit.dev** (coming soon)
-
-## 🙏 Credits
-
-- Inspired by Adobe Animate's lip sync system
-- Built for the Blender community
-- Thanks to Rhubarb Lip Sync and Allosaurus projects
-
-## 📮 Support
-
-- Issues: GitHub Issues
-- Discussions: GitHub Discussions
-- Email: support@lipkit.dev
+Clean timeline, real phoneme extraction, production-ready.
 
 ---
 
-**Made with ❤️ for animators**
+## ⚡ Quick Start (5 minutes)
+
+### 1. Install LipKit Extension
+- Add this repository as a local extension in Blender
+- Enable "LipKit" in Preferences → Extensions
+
+### 2. Download Rhubarb (FREE tool)
+1. Go to: https://github.com/DanielSWolf/rhubarb-lip-sync/releases
+2. Download for your OS (macOS/Windows/Linux)
+3. Extract the ZIP file
+4. Remember where you put the `rhubarb` executable
+
+### 3. Configure Tool Path
+1. Open Blender
+2. Press `N` → Click "LipKit" tab
+3. **Expand "Setup" panel** (at the top)
+4. Click "Configure Tool Path"
+5. Navigate to your `rhubarb` executable
+6. Click OK
+
+**Status should show: ✅ Ready**
+
+### 4. Create Mouth Shapes
+
+**For Grease Pencil (2D):**
+- Create 9 layers named: `X`, `A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`
+- Or: `Mouth_X`, `Mouth_A`, etc.
+- Draw different mouth shapes on each
+
+**For 3D (Shape Keys):**
+- Add shape keys named: `X`, `A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`
+- Model different mouth shapes
+
+**What each shape means:**
+- `X` = REST (closed mouth)
+- `A` = AH (father, hot)
+- `B` = M/B/P (lips closed)
+- `C` = EE (see, tree)
+- `D` = L/D/T (tongue up)
+- `E` = OH (go, show)
+- `F` = F/V (lip to teeth)
+- `G` = K/G (tongue back)
+- `H` = OO (food, you)
+
+### 5. Generate Lip Sync
+
+1. Add audio to VSE (or use File source)
+2. Click **"Analyze Audio"** ← Rhubarb extracts phonemes
+3. Select **"Rhubarb (A-H, X)"** preset
+4. Click **"Load Preset"** (refresh icon)
+5. Select your GP object or mesh
+6. Click **"Auto-Map Targets"** ← Matches layers/keys
+7. Click **"Create Controller"** (if not exists)
+8. Click **"🚀 Generate Lip Sync"**
+
+**Done!** Press Space to play.
+
+---
+
+## 🎯 Features
+
+- ✅ **Real phoneme extraction** with Rhubarb Lip Sync
+- ✅ **Clean timeline** - single controller property drives all shapes
+- ✅ **2D & 3D support** - Grease Pencil layers or Shape Keys
+- ✅ **Offline** - no API calls, no internet needed
+- ✅ **Fast** - processes audio in seconds
+- ✅ **Accurate** - uses speech recognition
+- ✅ **Open source** - MIT licensed
+
+---
+
+## 📖 Documentation
+
+- **[SETUP.md](SETUP.md)** - Detailed setup guide
+- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - Quick workflow
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical details
+- **[docs/API.md](docs/API.md)** - Python API reference
+
+---
+
+## 🔧 Troubleshooting
+
+### "Tool not found" or "Not configured"
+1. Download Rhubarb from GitHub releases
+2. Open Setup panel in LipKit (N-sidebar)
+3. Click "Configure Tool Path"
+4. Select the `rhubarb` executable (not the folder)
+
+### "Auto-mapped 0 targets"
+- Your layers/shape keys don't have the right names
+- Must contain: `X`, `A`, `B`, `C`, `D`, `E`, `F`, `G`, or `H`
+- Case-insensitive: `mouth_a` or `Mouth_A` both work
+
+### "Invalid command line" (Rhubarb error)
+- Make sure you're pointing to the `rhubarb` executable
+- On macOS: Right-click → Open first time to bypass security
+- Check system console (Window → Toggle System Console) for full errors
+
+### Animation doesn't play
+- Make sure controller object exists (Create Controller)
+- Check drivers in Graph Editor → Drivers tab
+- Verify target object is correct
+
+---
+
+## 🎨 How It Works
+
+Traditional lip sync clutters your timeline with hundreds of keyframes. LipKit uses a **single controller property** that drives all mouth shapes via expressions.
+
+**Result**: 
+- ✅ One animated channel
+- ✅ Clean timeline
+- ✅ Easy to adjust timing
+- ✅ Works with NLA strips
+
+**Under the hood**:
+1. Rhubarb analyzes audio → extracts phonemes
+2. LipKit creates a controller with `phoneme_index` property
+3. Drivers on your mouth shapes read this property
+4. Each driver: "Show this shape when phoneme_index = X"
+
+---
+
+## 📜 License
+
+MIT License - see [LICENSE](LICENSE)
+
+---
+
+**Made with ❤️ for the Blender community**
