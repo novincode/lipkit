@@ -95,11 +95,25 @@ class LipKitPreferences(bpy.types.AddonPreferences):
 
 
 def get_preferences(context=None) -> LipKitPreferences:
-    """Get addon preferences"""
+    """Get addon preferences - works with both addon and extension formats"""
     if context is None:
         context = bpy.context
     
-    return context.preferences.addons["lipkit"].preferences
+    # Try both "lipkit" and full module name
+    addons = context.preferences.addons
+    
+    # Try direct name first
+    if "lipkit" in addons:
+        return addons["lipkit"].preferences
+    
+    # Try with package name if it's an extension
+    for addon_name in addons.keys():
+        if "lipkit" in addon_name.lower():
+            return addons[addon_name].preferences
+    
+    # If not found, return defaults (non-blocking)
+    print(f"⚠ LipKit preferences not found. Available addons: {list(addons.keys())}")
+    return LipKitPreferences()
 
 
 def register():

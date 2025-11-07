@@ -13,6 +13,15 @@ from .phoneme_providers import LocalPhonemeProvider, APIPhonemeProvider, CustomA
 from .utils import audio_utils
 from .preferences import get_preferences
 
+# Module-level cache for phoneme data (survives scene changes)
+_phoneme_data_cache = None
+
+
+def get_cached_phoneme_data():
+    """Retrieve cached phoneme data from analyze_audio"""
+    global _phoneme_data_cache
+    return _phoneme_data_cache
+
 
 class LIPKIT_OT_create_controller(bpy.types.Operator):
     """Create a new LipKit controller object"""
@@ -99,7 +108,9 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                     lipsync_data
                 )
             
-            # Store in scene (simplified - in production would use a proper storage)
+            # Store in scene AND module cache
+            global _phoneme_data_cache
+            _phoneme_data_cache = lipsync_data
             props.phoneme_data_cached = True
             
             self.report(
@@ -257,9 +268,12 @@ class LIPKIT_OT_generate(bpy.types.Operator):
         try:
             props.generation_in_progress = True
             
-            # Re-extract phonemes (or load from cache)
-            provider = LocalPhonemeProvider(tool_path=prefs.local_tool_path)
-            lipsync_data = provider.extract_phonemes(audio_path, language=props.language)
+            # Use cached phoneme data
+            lipsync_data = get_cached_phoneme_data()
+            
+            if not lipsync_data:
+                self.report({'ERROR'}, "Phoneme data lost - analyze audio again")
+                return {'CANCELLED'}
             
             # Build mapping
             mapping = PhonemeMapping()
