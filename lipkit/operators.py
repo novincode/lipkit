@@ -43,6 +43,86 @@ class LIPKIT_OT_open_preferences(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
+    """Select Rhubarb folder or executable"""
+    bl_idname = "lipkit.select_rhubarb"
+    bl_label = "Select Rhubarb"
+    bl_options = {'REGISTER'}
+    
+    filepath: bpy.props.StringProperty(
+        name="Rhubarb Executable or Folder",
+        description="Path to rhubarb executable or folder containing it",
+        subtype='FILE_PATH'
+    )
+    
+    filter_glob: bpy.props.StringProperty(
+        default="rhubarb;rhubarb.exe;*",
+        options={'HIDDEN'}
+    )
+    
+    def execute(self, context):
+        from .preferences import get_preferences
+        import os
+        
+        if not self.filepath:
+            self.report({'ERROR'}, "No file selected")
+            return {'CANCELLED'}
+        
+        # Normalize path
+        path = os.path.normpath(self.filepath)
+        
+        # If it's a directory, look for rhubarb inside it
+        if os.path.isdir(path):
+            # Try to find rhubarb in this directory
+            potential_paths = [
+                os.path.join(path, "rhubarb"),
+                os.path.join(path, "rhubarb.exe"),
+                os.path.join(path, "bin", "rhubarb"),
+                os.path.join(path, "bin", "rhubarb.exe"),
+            ]
+            
+            rhubarb_path = None
+            for potential in potential_paths:
+                if os.path.exists(potential):
+                    rhubarb_path = potential
+                    print(f"✓ Found rhubarb at: {rhubarb_path}")
+                    break
+            
+            if not rhubarb_path:
+                self.report({'ERROR'}, f"Rhubarb not found in: {path}\n\nTry selecting the rhubarb file directly")
+                return {'CANCELLED'}
+            
+            path = rhubarb_path
+        
+        # Verify it's executable
+        if not os.path.exists(path):
+            self.report({'ERROR'}, f"File not found: {path}")
+            return {'CANCELLED'}
+        
+        # Store the path in preferences
+        prefs = get_preferences(context)
+        prefs.local_tool_path = path
+        
+        # Also try to save to addon preferences properly
+        try:
+            for addon_name in context.preferences.addons.keys():
+                if "lipkit" in addon_name.lower():
+                    addon_prefs = context.preferences.addons[addon_name].preferences
+                    if addon_prefs:
+                        addon_prefs.local_tool_path = path
+                    break
+        except Exception as e:
+            print(f"Warning: Could not save to addon prefs: {e}")
+        
+        self.report({'INFO'}, f"✅ Rhubarb configured: {path}")
+        print(f"✅ Rhubarb path saved: {path}")
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
 class LIPKIT_OT_create_controller(bpy.types.Operator):
     """Create a new LipKit controller object"""
     bl_idname = "lipkit.create_controller"
@@ -364,6 +444,7 @@ class LIPKIT_OT_clear_animation(bpy.types.Operator):
 # Registration
 classes = [
     LIPKIT_OT_open_preferences,
+    LIPKIT_OT_select_rhubarb,
     LIPKIT_OT_create_controller,
     LIPKIT_OT_analyze_audio,
     LIPKIT_OT_load_preset,

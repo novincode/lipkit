@@ -31,7 +31,7 @@ class LIPKIT_PT_setup(bpy.types.Panel):
         
         if not tool_configured:
             box.label(text="❌ Not configured", icon='ERROR')
-            box.label(text="Click button below to set up")
+            box.label(text="Select folder or executable below", icon='QUESTION')
         elif not tool_exists:
             box.label(text="❌ File not found", icon='ERROR')
             box.label(text=f"Path: {prefs.local_tool_path}", icon='QUESTION')
@@ -40,18 +40,32 @@ class LIPKIT_PT_setup(bpy.types.Panel):
             row = box.row()
             row.label(text=os.path.basename(prefs.local_tool_path))
         
-        # Quick setup button
+        # File selector button
         row = layout.row()
-        row.scale_y = 1.3
-        row.operator("lipkit.open_preferences", text="Configure Tool Path", icon='PREFERENCES')
+        row.scale_y = 1.5
+        if tool_configured and tool_exists:
+            # Show "Change" button if already configured
+            row.operator("lipkit.select_rhubarb", text="📁 Change Path", icon='FILE_FOLDER')
+        else:
+            # Show "Select" button if not configured
+            row.operator("lipkit.select_rhubarb", text="📁 Select Rhubarb", icon='FILE_FOLDER')
+        
+        # Info
+        layout.separator()
+        info_box = layout.box()
+        info_box.label(text="Steps:", icon='INFO')
+        info_box.label(text="1. Download Rhubarb from GitHub")
+        info_box.label(text="2. Extract the ZIP file")
+        info_box.label(text="3. Click above to select folder")
+        info_box.label(text="4. Should show ✅ Ready")
         
         # Download link
         layout.separator()
         col = layout.column()
-        col.label(text="Need Rhubarb?", icon='URL')
-        col.label(text="Download from:")
+        col.scale_y = 0.8
+        col.label(text="Download Rhubarb:", icon='URL')
         col.label(text="github.com/DanielSWolf/")
-        col.label(text="rhubarb-lip-sync")
+        col.label(text="rhubarb-lip-sync/releases")
 
 
 class LIPKIT_PT_main(bpy.types.Panel):
