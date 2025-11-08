@@ -43,6 +43,45 @@ class LIPKIT_OT_open_preferences(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class LIPKIT_OT_download_rhubarb(bpy.types.Operator):
+    """Download and install Rhubarb automatically"""
+    bl_idname = "lipkit.download_rhubarb"
+    bl_label = "Download Rhubarb"
+    bl_options = {'REGISTER'}
+    
+    def execute(self, context):
+        from .utils.rhubarb_manager import download_rhubarb, verify_rhubarb
+        from .preferences import get_preferences
+        
+        try:
+            self.report({'INFO'}, "Downloading Rhubarb... this may take a minute")
+            
+            success, result = download_rhubarb()
+            
+            if not success:
+                self.report({'ERROR'}, f"Download failed: {result}")
+                return {'CANCELLED'}
+            
+            exe_path = result
+            
+            # Verify it works
+            is_valid, msg = verify_rhubarb(exe_path)
+            if not is_valid:
+                self.report({'ERROR'}, msg)
+                return {'CANCELLED'}
+            
+            # Update preferences
+            prefs = get_preferences(context)
+            prefs.local_tool_path = exe_path
+            
+            self.report({'INFO'}, f"✅ {msg}")
+            return {'FINISHED'}
+        
+        except Exception as e:
+            self.report({'ERROR'}, f"Download failed: {str(e)}")
+            return {'CANCELLED'}
+
+
 class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
     """Select folder containing Rhubarb"""
     bl_idname = "lipkit.select_rhubarb"
@@ -499,7 +538,10 @@ class LIPKIT_OT_generate(bpy.types.Operator):
                 props.target_object,
                 start_frame=props.start_frame,
                 use_nla=props.use_nla,
-                action_name=props.action_name
+                action_name=props.action_name,
+                use_easing=props.use_easing,
+                easing_type=props.easing_type,
+                easing_duration=props.easing_duration
             )
             
             # Report results
@@ -591,6 +633,7 @@ class LIPKIT_OT_clear_animation(bpy.types.Operator):
 # Registration
 classes = [
     LIPKIT_OT_open_preferences,
+    LIPKIT_OT_download_rhubarb,
     LIPKIT_OT_select_rhubarb,
     LIPKIT_OT_create_controller,
     LIPKIT_OT_analyze_audio,

@@ -78,7 +78,7 @@ class LocalPhonemeProvider(PhonemeProvider):
         Extract phonemes using Rhubarb Lip Sync tool
         
         Args:
-            audio_path: Path to audio file
+            audio_path: Path to audio file (MP3, M4A, OGG, WAV, etc.)
             language: Language code (Rhubarb supports en, de, fr, pt)
             **kwargs: Additional options
         
@@ -108,12 +108,37 @@ class LocalPhonemeProvider(PhonemeProvider):
                 f"Please check the path in LipKit preferences."
             )
         
+        # Convert to WAV if necessary
+        wav_path = audio_path
+        from ..utils.audio_utils import convert_audio_to_wav
+        
+        if not audio_path.lower().endswith('.wav'):
+            print(f"📦 Audio format conversion required")
+            success, result = convert_audio_to_wav(audio_path)
+            
+            if not success:
+                raise ExtractionError(
+                    f"Cannot process audio format. {result}\n\n"
+                    f"Supported formats: WAV, MP3, M4A, OGG, FLAC, AAC\n"
+                    f"Install ffmpeg to enable format conversion."
+                )
+            
+            wav_path = result
+        
         # Run the extraction tool
         try:
-            result = self._run_rhubarb(audio_path, language)
+            result = self._run_rhubarb(wav_path, language)
             return self._parse_rhubarb_output(result, audio_path)
         except Exception as e:
             raise ExtractionError(f"Phoneme extraction failed: {str(e)}")
+        finally:
+            # Clean up converted file if we created one
+            if wav_path != audio_path and os.path.exists(wav_path):
+                try:
+                    os.remove(wav_path)
+                    print(f"✨ Cleaned up temporary WAV file")
+                except:
+                    pass
     
     def _run_rhubarb(self, audio_path: str, language: str) -> str:
         """Run Rhubarb Lip Sync tool

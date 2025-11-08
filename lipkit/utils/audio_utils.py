@@ -237,3 +237,73 @@ def time_to_frame(time_seconds: float, fps: float) -> int:
 def frame_to_time(frame: int, fps: float) -> float:
     """Convert frame number to time in seconds"""
     return frame / fps
+
+
+def convert_audio_to_wav(input_path: str, output_path: str = None) -> Tuple[bool, str]:
+    """
+    Convert audio file to WAV format
+    
+    Supports: MP3, M4A, OGG, FLAC, AAC
+    Uses ffmpeg if available
+    
+    Args:
+        input_path: Path to input audio file
+        output_path: Path for output WAV (default: same name with .wav)
+        
+    Returns:
+        (success, output_path_or_error_message)
+    """
+    import subprocess
+    
+    if not os.path.exists(input_path):
+        return False, f"File not found: {input_path}"
+    
+    # Check if already WAV
+    if input_path.lower().endswith('.wav'):
+        return True, input_path
+    
+    # Generate output path if not provided
+    if output_path is None:
+        base_path = os.path.splitext(input_path)[0]
+        output_path = base_path + "_converted.wav"
+    
+    # Check if ffmpeg is available
+    try:
+        result = subprocess.run(
+            ['ffmpeg', '-version'],
+            capture_output=True,
+            timeout=2
+        )
+        if result.returncode != 0:
+            return False, "ffmpeg not found. Please install ffmpeg to convert audio formats."
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False, "ffmpeg not found. Install with: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)"
+    
+    # Convert to WAV
+    try:
+        print(f"🔄 Converting {os.path.basename(input_path)} to WAV...")
+        
+        result = subprocess.run(
+            [
+                'ffmpeg',
+                '-i', input_path,
+                '-acodec', 'pcm_s16le',  # Standard WAV codec
+                '-ar', '16000',           # 16kHz is good for speech
+                '-y',                      # Overwrite output file
+                output_path
+            ],
+            capture_output=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0 and os.path.exists(output_path):
+            print(f"✅ Converted to: {output_path}")
+            return True, output_path
+        else:
+            error = result.stderr.decode('utf-8', errors='ignore')
+            return False, f"ffmpeg conversion failed: {error}"
+    
+    except subprocess.TimeoutExpired:
+        return False, "Audio conversion timed out (> 60 seconds)"
+    except Exception as e:
+        return False, f"Conversion error: {str(e)}"

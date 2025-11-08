@@ -344,6 +344,18 @@ class LIPKIT_PT_generate(bpy.types.Panel):
         
         layout.separator()
         
+        # Animation Easing Section
+        box = layout.box()
+        box.prop(props, "use_easing", toggle=True)
+        
+        if props.use_easing:
+            box2 = box.box()
+            box2.prop(props, "easing_type")
+            box2.prop(props, "easing_duration")
+            box2.label(text="Mouth will smoothly transition between shapes", icon='CURVE_SMOOTH')
+        
+        layout.separator()
+        
         # Generate button
         col = layout.column()
         col.scale_y = 2.0

@@ -3,7 +3,7 @@ Addon preferences for LipKit
 """
 
 import bpy
-from bpy.props import StringProperty, BoolProperty
+from bpy.props import StringProperty, BoolProperty, EnumProperty
 
 
 class PreferencesDefaults:
@@ -11,6 +11,7 @@ class PreferencesDefaults:
     def __init__(self):
         self.use_cache = True
         self.local_tool_path = ""
+        self.rhubarb_mode = "auto"
         self.api_key = ""
         self.api_endpoint = "https://api.lipkit.dev/extract"
         self.custom_api_endpoint = ""
@@ -21,10 +22,21 @@ class PreferencesDefaults:
 class LipKitPreferences(bpy.types.AddonPreferences):
     bl_idname = "lipkit"
     
+    # Rhubarb Setup Mode
+    rhubarb_mode: EnumProperty(
+        name="Rhubarb Setup",
+        description="How to manage Rhubarb installation",
+        items=[
+            ('auto', 'Auto (Recommended)', 'Automatically download and manage Rhubarb'),
+            ('manual', 'Manual', 'Manually select Rhubarb folder'),
+        ],
+        default='auto'
+    )
+    
     # Local Tool Settings
     local_tool_path: StringProperty(
         name="Local Tool Path",
-        description="Path to phoneme extraction tool (e.g., Rhubarb, Allosaurus)",
+        description="Path to phoneme extraction tool (e.g., Rhubarb)",
         subtype='FILE_PATH',
         default=""
     )
@@ -73,12 +85,39 @@ class LipKitPreferences(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
         
-        # Local Tool Section
+        # Rhubarb Setup Section
         box = layout.box()
-        box.label(text="Local Phoneme Extraction", icon='FILE_SOUND')
-        box.prop(self, "local_tool_path")
+        box.label(text="Rhubarb Lip Sync Setup", icon='FILE_SOUND')
+        box.prop(self, "rhubarb_mode", expand=True)
+        
+        if self.rhubarb_mode == 'auto':
+            # Auto mode
+            box2 = box.box()
+            row = box2.row(align=True)
+            row.scale_y = 1.5
+            row.operator("lipkit.download_rhubarb", text="📥 Download Rhubarb", icon='IMPORT')
+            
+            box2.label(text="Rhubarb will be automatically downloaded and", icon='INFO')
+            box2.label(text="installed to your Blender config folder", icon='BLANK1')
+            
+            # Check if already installed
+            from .utils.rhubarb_manager import get_rhubarb_executable
+            exe = get_rhubarb_executable()
+            if exe:
+                box2.label(text=f"✅ Installed: {exe}", icon='CHECKMARK')
+            else:
+                box2.label(text="Not installed yet. Click Download button.", icon='ERROR')
+        
+        else:
+            # Manual mode
+            box2 = box.box()
+            box2.prop(self, "local_tool_path")
+            box2.operator("lipkit.select_rhubarb_manual", text="📁 Select Folder", icon='FILE_FOLDER')
+            
+            if self.local_tool_path:
+                box2.label(text=f"Path set to: {self.local_tool_path}", icon='CHECKMARK')
+        
         box.prop(self, "use_cache")
-        box.label(text="Install Rhubarb or Allosaurus for local extraction", icon='INFO')
         
         layout.separator()
         
@@ -90,14 +129,6 @@ class LipKitPreferences(bpy.types.AddonPreferences):
         
         if not self.api_key:
             box.label(text="Get API key at lipkit.dev", icon='URL')
-        
-        layout.separator()
-        
-        # Custom API Section
-        box = layout.box()
-        box.label(text="Custom API", icon='SCRIPT')
-        box.prop(self, "custom_api_endpoint")
-        box.prop(self, "custom_api_key")
         
         layout.separator()
         
