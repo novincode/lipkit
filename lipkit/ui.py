@@ -208,6 +208,66 @@ class LIPKIT_PT_visual_system(bpy.types.Panel):
                 box.label(text=f"Object type: {obj.type}", icon='OBJECT_DATA')
 
 
+class LIPKIT_PT_2d_output(bpy.types.Panel):
+    """2D Grease Pencil output layer panel"""
+    bl_label = "2D Output Layer (Optional)"
+    bl_idname = "LIPKIT_PT_2d_output"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "LipKit"
+    bl_parent_id = "LIPKIT_PT_main"
+    bl_options = {'DEFAULT_CLOSED'}
+    
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.lipkit
+        
+        # Only show if using grease pencil visual system
+        if props.visual_system != 'gp_layer':
+            layout.label(text="Only for Grease Pencil mode", icon='INFO')
+            return
+        
+        # Toggle 2D output mode
+        box = layout.box()
+        box.prop(props, "use_2d_output", text="Enable 2D Output Layer", toggle=True)
+        
+        if not props.use_2d_output:
+            box.label(text="Uses controller + drivers (3D mode)", icon='DRIVER')
+            return
+        
+        layout.separator()
+        
+        # 2D Output Configuration
+        box = layout.box()
+        box.label(text="Character Object (receives animation):", icon='OUTLINER_OB_GREASEPENCIL')
+        
+        box.prop(props, "output_gp_object", text="Character GP")
+        
+        if props.output_gp_object:
+            if props.output_gp_object.type not in ('GPENCIL', 'GREASEPENCIL'):
+                box.label(text="⚠ Not a Grease Pencil object!", icon='ERROR')
+            else:
+                # Show available layers count
+                layer_count = len(props.output_gp_object.data.layers) if hasattr(props.output_gp_object.data, 'layers') else 0
+                if layer_count > 0:
+                    box.label(text=f"✓ {layer_count} layers available", icon='CHECKMARK')
+                    
+                    # Dynamic layer selector
+                    box.prop(props, "output_gp_layer", text="Mouth Layer")
+                else:
+                    box.label(text="⚠ No layers in this object", icon='ERROR')
+                    box.label(text="Add a 'Mouth' layer in Draw mode")
+        
+        # Help text
+        layout.separator()
+        help_box = layout.box()
+        help_box.label(text="How it works:", icon='QUESTION')
+        help_box.label(text="• Source: Mouth library object (mapped layers)")
+        help_box.label(text="• Target: Character's mouth layer")
+        help_box.label(text="• Copies stroke data to target at right frames")
+        help_box.label(text="• Library object stays untouched")
+
+
 class LIPKIT_PT_mapping(bpy.types.Panel):
     """Phoneme mapping panel"""
     bl_label = "Phoneme Mapping"
@@ -223,7 +283,10 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
         
         # Target object selector FIRST
         box = layout.box()
-        box.label(text="Animation Target:", icon='OBJECT_DATA')
+        if props.visual_system == 'gp_layer' and props.use_2d_output:
+            box.label(text="Mouth Library (source shapes):", icon='DOCUMENTS')
+        else:
+            box.label(text="Animation Target:", icon='OBJECT_DATA')
         box.prop(props, "target_object", text="")
         
         if props.target_object:
@@ -387,6 +450,7 @@ classes = [
     LIPKIT_PT_audio,
     LIPKIT_PT_phoneme_engine,
     LIPKIT_PT_visual_system,
+    LIPKIT_PT_2d_output,
     LIPKIT_PT_mapping,
     LIPKIT_PT_controller,
     LIPKIT_PT_generate,

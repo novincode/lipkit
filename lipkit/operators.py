@@ -495,18 +495,40 @@ class LIPKIT_OT_generate(bpy.types.Operator):
             # Generate animation
             engine = AnimationEngine(lipsync_data, mapping, props.controller_object)
             
+            # Collect 2D output parameters if enabled
+            output_gp_object = None
+            output_gp_layer = None
+            if props.use_2d_output and props.output_gp_object:
+                output_gp_object = props.output_gp_object
+                # Check if a valid layer is selected (not 'NONE')
+                if props.output_gp_layer and props.output_gp_layer != 'NONE':
+                    output_gp_layer = props.output_gp_layer
+                else:
+                    self.report({'ERROR'}, "Select a valid output GP layer")
+                    return {'CANCELLED'}
+            
             results = engine.generate(
                 props.target_object,
                 start_frame=props.start_frame,
                 use_nla=props.use_nla,
-                action_name=props.action_name
+                action_name=props.action_name,
+                output_gp_object=output_gp_object,
+                output_gp_layer=output_gp_layer
             )
             
-            self.report(
-                {'INFO'},
-                f"Generated {results['keyframes_created']} keyframes, "
-                f"{results['drivers_created']} drivers"
-            )
+            # Report based on mode
+            if results.get('output_mode') == '2d_gp':
+                self.report(
+                    {'INFO'},
+                    f"✓ Generated {results.get('gp_keyframes_created', 0)} keyframes "
+                    f"on {len(props.phoneme_mappings)} mouth layers (2D mode)"
+                )
+            else:
+                self.report(
+                    {'INFO'},
+                    f"✓ Generated {results['keyframes_created']} keyframes, "
+                    f"{results['drivers_created']} drivers (3D mode)"
+                )
             
             return {'FINISHED'}
         
