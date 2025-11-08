@@ -13,10 +13,24 @@ class PreferencesDefaults:
         self.local_tool_path = ""
         self.rhubarb_mode = "auto"
         self.api_key = ""
-        self.api_endpoint = "https://api.lipkit.dev/extract"
+        self.api_endpoint = "https://api.lipkit.dev/v1/phonemes"
         self.custom_api_endpoint = ""
         self.custom_api_key = ""
         self.debug_mode = False
+    
+    def __getattr__(self, name):
+        """Return sensible defaults for any missing attributes"""
+        defaults = {
+            'rhubarb_mode': 'auto',
+            'use_cache': True,
+            'local_tool_path': '',
+            'api_key': '',
+            'api_endpoint': 'https://api.lipkit.dev/v1/phonemes',
+            'custom_api_endpoint': '',
+            'custom_api_key': '',
+            'debug_mode': False,
+        }
+        return defaults.get(name, None)
 
 
 class LipKitPreferences(bpy.types.AddonPreferences):

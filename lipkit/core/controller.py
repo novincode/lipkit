@@ -145,7 +145,8 @@ class LipSyncController:
     def create_action(
         controller: bpy.types.Object,
         action_name: str,
-        frame_data: Dict[int, int]
+        frame_data: Dict[int, int],
+        interpolation: str = 'CONSTANT'
     ) -> bpy.types.Action:
         """
         Create an action with keyframes for the controller
@@ -154,6 +155,7 @@ class LipSyncController:
             controller: Controller object
             action_name: Name for the action
             frame_data: Dictionary mapping frame numbers to phoneme indices
+            interpolation: Keyframe interpolation type
             
         Returns:
             Created action
@@ -168,7 +170,7 @@ class LipSyncController:
         
         # Add keyframes
         for frame, phoneme_idx in sorted(frame_data.items()):
-            LipSyncController.add_keyframe(controller, frame, phoneme_idx)
+            LipSyncController.add_keyframe(controller, frame, phoneme_idx, interpolation=interpolation)
         
         return action
     

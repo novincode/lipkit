@@ -137,6 +137,58 @@ class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
+class LIPKIT_OT_select_rhubarb_manual(bpy.types.Operator):
+    """Manually select Rhubarb folder or executable"""
+    bl_idname = "lipkit.select_rhubarb_manual"
+    bl_label = "Select Rhubarb"
+    bl_options = {'REGISTER'}
+    
+    directory: bpy.props.StringProperty(
+        name="Rhubarb Folder",
+        description="Folder containing rhubarb executable",
+        subtype='DIR_PATH'
+    )
+    
+    def execute(self, context):
+        import os
+        from .preferences import get_preferences
+        
+        if not self.directory:
+            self.report({'ERROR'}, "No folder selected")
+            return {'CANCELLED'}
+        
+        # Look for rhubarb in this directory
+        potential_paths = [
+            os.path.join(self.directory, "rhubarb"),
+            os.path.join(self.directory, "rhubarb.exe"),
+        ]
+        
+        rhubarb_path = None
+        for path in potential_paths:
+            if os.path.exists(path):
+                rhubarb_path = path
+                break
+        
+        if not rhubarb_path:
+            self.report({'ERROR'}, f"rhubarb not found in: {self.directory}")
+            return {'CANCELLED'}
+        
+        # Save to preferences
+        prefs = get_preferences(context)
+        prefs.local_tool_path = rhubarb_path
+        
+        # Also save to scene properties
+        context.scene.lipkit.rhubarb_path = rhubarb_path
+        
+        print(f"✅ Rhubarb path set: {rhubarb_path}")
+        self.report({'INFO'}, f"✅ Ready: {os.path.basename(rhubarb_path)}")
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
 class LIPKIT_OT_create_controller(bpy.types.Operator):
     """Create a new LipKit controller object"""
     bl_idname = "lipkit.create_controller"
@@ -541,7 +593,8 @@ class LIPKIT_OT_generate(bpy.types.Operator):
                 action_name=props.action_name,
                 use_easing=props.use_easing,
                 easing_type=props.easing_type,
-                easing_duration=props.easing_duration
+                easing_duration=props.easing_duration,
+                interpolation=props.interpolation
             )
             
             # Report results
@@ -635,6 +688,7 @@ classes = [
     LIPKIT_OT_open_preferences,
     LIPKIT_OT_download_rhubarb,
     LIPKIT_OT_select_rhubarb,
+    LIPKIT_OT_select_rhubarb_manual,
     LIPKIT_OT_create_controller,
     LIPKIT_OT_analyze_audio,
     LIPKIT_OT_load_preset,

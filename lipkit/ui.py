@@ -130,31 +130,60 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         layout = self.layout
         props = context.scene.lipkit
         
+        from .preferences import get_preferences, PreferencesDefaults
+        prefs = get_preferences(context)
+        
         layout.prop(props, "phoneme_provider", text="Engine")
         
-        # Show Rhubarb path selector if LOCAL is selected
+        # Show Rhubarb setup if LOCAL is selected
         if props.phoneme_provider == 'LOCAL':
             box = layout.box()
             box.label(text="Rhubarb Setup:", icon='TOOL_SETTINGS')
             
-            tool_path = props.rhubarb_path
-            
-            # Check status
-            if tool_path and os.path.exists(tool_path):
-                box.label(text="✅ Ready", icon='CHECKMARK')
-                box.label(text=os.path.basename(tool_path))
+            # Only show mode selector if using actual preferences (not fallback)
+            if not isinstance(prefs, PreferencesDefaults):
+                try:
+                    box.prop(prefs, "rhubarb_mode", text="Mode")
+                    mode = prefs.rhubarb_mode
+                except:
+                    mode = 'auto'
             else:
-                box.label(text="❌ Not configured", icon='ERROR')
+                mode = 'auto'
+                box.label(text="(Using auto mode)", icon='INFO')
             
-            # Simple folder selector
-            row = box.row()
-            row.scale_y = 1.3
-            row.operator("lipkit.select_rhubarb", text="Select Rhubarb Folder", icon='FILEBROWSER')
+            if mode == 'auto':
+                # Auto mode - download button
+                from .utils.rhubarb_manager import get_rhubarb_executable
+                exe = get_rhubarb_executable()
+                
+                if exe and os.path.exists(exe):
+                    box.label(text="✅ Installed", icon='CHECKMARK')
+                    box.label(text=os.path.basename(exe))
+                else:
+                    box.label(text="❌ Not installed", icon='ERROR')
+                    row = box.row()
+                    row.scale_y = 1.5
+                    row.operator("lipkit.download_rhubarb", text="📥 Download Rhubarb", icon='IMPORT')
             
-            # Info
-            box.label(text="Download, extract, select folder")
-            box.label(text="github.com/DanielSWolf/rhubarb-lip-sync")
+            else:
+                # Manual mode - folder selector
+                tool_path = props.rhubarb_path or prefs.local_tool_path
+                
+                if tool_path and os.path.exists(tool_path):
+                    box.label(text="✅ Ready", icon='CHECKMARK')
+                    box.label(text=os.path.basename(tool_path))
+                else:
+                    box.label(text="❌ Not configured", icon='ERROR')
+                
+                row = box.row()
+                row.scale_y = 1.3
+                row.operator("lipkit.select_rhubarb_manual", text="📁 Select Folder", icon='FILE_FOLDER')
+                
+                # Info
+                box.label(text="Download, extract, select folder", icon='INFO')
+                box.label(text="github.com/DanielSWolf/rhubarb-lip-sync")
         
+        layout.separator()
         layout.prop(props, "language")
         
         # Analyze button
@@ -344,19 +373,7 @@ class LIPKIT_PT_generate(bpy.types.Panel):
         
         layout.separator()
         
-        # Animation Easing Section
-        box = layout.box()
-        box.prop(props, "use_easing", toggle=True)
-        
-        if props.use_easing:
-            box2 = box.box()
-            box2.prop(props, "easing_type")
-            box2.prop(props, "easing_duration")
-            box2.label(text="Mouth will smoothly transition between shapes", icon='CURVE_SMOOTH')
-        
-        layout.separator()
-        
-        # Generate button
+        # Generate button - ALWAYS visible
         col = layout.column()
         col.scale_y = 2.0
         
@@ -394,6 +411,32 @@ class LIPKIT_PT_generate(bpy.types.Panel):
                 box.label(text=f"• {issue}")
 
 
+class LIPKIT_PT_generate_easing(bpy.types.Panel):
+    """Easing options sub-panel"""
+    bl_label = "Smooth Mouth Transitions"
+    bl_idname = "LIPKIT_PT_generate_easing"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "LipKit"
+    bl_parent_id = "LIPKIT_PT_generate"
+    bl_options = {'DEFAULT_CLOSED'}
+    
+    def draw_header(self, context):
+        props = context.scene.lipkit
+        self.layout.prop(props, "use_easing", text="")
+    
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.lipkit
+        
+        layout.enabled = props.use_easing
+        
+        box = layout.box()
+        box.prop(props, "easing_type")
+        box.prop(props, "easing_duration")
+        box.label(text="Mouth will smoothly transition between shapes", icon='CURVE_SMOOTH')
+
+
 # Registration
 classes = [
     LIPKIT_PT_main,
@@ -403,6 +446,7 @@ classes = [
     LIPKIT_PT_mapping,
     LIPKIT_PT_controller,
     LIPKIT_PT_generate,
+    LIPKIT_PT_generate_easing,
 ]
 
 

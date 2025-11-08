@@ -47,7 +47,8 @@ class AnimationEngine:
         action_name: str = "LipSync",
         use_easing: bool = False,
         easing_type: str = 'ease_in_out',
-        easing_duration: float = 3.0
+        easing_duration: float = 3.0,
+        interpolation: str = 'LINEAR'
     ) -> Dict[str, any]:
         """
         Generate lip sync animation using controller + drivers
@@ -61,6 +62,7 @@ class AnimationEngine:
             use_easing: Apply easing to mouth transitions
             easing_type: Type of easing ('ease_in_out', 'ease_in', 'ease_out', 'smooth')
             easing_duration: Number of frames for easing transition
+            interpolation: Keyframe interpolation mode ('CONSTANT', 'LINEAR', 'BEZIER')
             
         Returns:
             Dictionary with generation results and statistics
@@ -96,7 +98,8 @@ class AnimationEngine:
             action = LipSyncController.create_action(
                 self.controller,
                 action_name,
-                frame_data
+                frame_data,
+                interpolation=interpolation
             )
             nla_strip = LipSyncController.create_nla_strip(
                 self.controller,
@@ -111,7 +114,7 @@ class AnimationEngine:
                     self.controller,
                     frame,
                     index,
-                    interpolation='CONSTANT'
+                    interpolation=interpolation
                 )
         
         # Step 3: Create drivers on target object
@@ -166,6 +169,9 @@ class AnimationEngine:
         # Get unique indices
         unique_indices = set(phoneme_to_index.values())
         
+        # IMPORTANT: Clear old drivers first to support multiple controllers/regeneration
+        self._clear_existing_drivers(target_object)
+        
         # For each unique index, create a driver
         for index in unique_indices:
             # Find which phoneme(s) map to this index
@@ -214,6 +220,31 @@ class AnimationEngine:
                 print(f"Warning: Failed to create driver for {target_name}: {e}")
         
         return drivers
+    
+    def _clear_existing_drivers(self, target_object: bpy.types.Object) -> None:
+        """
+        Clear existing LipKit drivers from target object.
+        This allows switching between controllers and regenerating animations.
+        """
+        data_to_clear = []
+        
+        # Determine what data contains drivers based on visual system
+        if self.mapping.visual_system == "gp_layer":
+            if hasattr(target_object, 'data') and hasattr(target_object.data, 'animation_data'):
+                data_to_clear.append(target_object.data)
+        elif self.mapping.visual_system == "shape_key":
+            if hasattr(target_object.data, 'shape_keys') and target_object.data.shape_keys:
+                if hasattr(target_object.data.shape_keys, 'animation_data'):
+                    data_to_clear.append(target_object.data.shape_keys)
+        
+        # Remove drivers
+        for data in data_to_clear:
+            if data.animation_data and data.animation_data.drivers:
+                # Remove all drivers (they'll be recreated)
+                drivers_to_remove = list(data.animation_data.drivers)
+                for fcurve in drivers_to_remove:
+                    data.animation_data.drivers.remove(fcurve)
+                print(f"✓ Cleared {len(drivers_to_remove)} old drivers from {target_object.name}")
     
     def preview_at_time(self, time_seconds: float, fps: Optional[float] = None) -> str:
         """

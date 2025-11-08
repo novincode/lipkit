@@ -50,6 +50,38 @@ def get_mesh_objects(self, context):
     return items
 
 
+def on_preset_changed(self, context):
+    """Auto-load preset when selection changes"""
+    # Import here to avoid circular imports
+    from .core.mapping import PresetManager
+    
+    # Don't auto-load custom preset
+    if self.phoneme_preset == 'custom':
+        return
+    
+    try:
+        preset_data = PresetManager.load_preset(self.phoneme_preset)
+        
+        if not preset_data:
+            return
+        
+        # Clear existing mappings
+        self.phoneme_mappings.clear()
+        
+        # Add mappings from preset
+        for item in preset_data.get("mappings", []):
+            mapping = self.phoneme_mappings.add()
+            mapping.phoneme = item.get("phoneme", "")
+            mapping.phoneme_index = item.get("index", 0)
+            mapping.target_name = ""  # User needs to set this
+            mapping.enabled = True
+        
+        print(f"✓ Auto-loaded preset: {preset_data.get('name', self.phoneme_preset)}")
+    
+    except Exception as e:
+        print(f"Failed to auto-load preset: {e}")
+
+
 class LipKitPhonemeMappingItem(bpy.types.PropertyGroup):
     """Single phoneme mapping entry"""
     
@@ -186,7 +218,8 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
             ('arpabet', 'ARPAbet', 'Full English phoneme set'),
             ('custom', 'Custom', 'Custom mapping'),
         ],
-        default='rhubarb'
+        default='rhubarb',
+        update=on_preset_changed
     )
     
     phoneme_mappings: CollectionProperty(
