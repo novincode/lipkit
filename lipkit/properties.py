@@ -50,21 +50,6 @@ def get_mesh_objects(self, context):
     return items
 
 
-def get_output_gp_layers(self, context):
-    """Get list of layers from the selected output GP object"""
-    items = [('NONE', 'None', 'No layer selected')]
-    
-    props = context.scene.lipkit
-    if props.output_gp_object and props.output_gp_object.type in ('GPENCIL', 'GREASEPENCIL'):
-        if hasattr(props.output_gp_object.data, 'layers'):
-            for layer in props.output_gp_object.data.layers:
-                layer_name = getattr(layer, 'name', None) or getattr(layer, 'info', None)
-                if layer_name:
-                    items.append((layer_name, layer_name, f"GP Layer: {layer_name}"))
-    
-    return items
-
-
 class LipKitPhonemeMappingItem(bpy.types.PropertyGroup):
     """Single phoneme mapping entry"""
     
@@ -182,25 +167,6 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
         name="Target Object",
         description="Object to animate",
         type=bpy.types.Object
-    )
-    
-    # 2D Output System (for Grease Pencil)
-    use_2d_output: BoolProperty(
-        name="Use 2D Output Layer",
-        description="Generate keyframes on a separate output GP layer instead of drivers",
-        default=False
-    )
-    
-    output_gp_object: PointerProperty(
-        name="Output GP Object",
-        description="Grease Pencil object to receive the animation keyframes",
-        type=bpy.types.Object
-    )
-    
-    output_gp_layer: EnumProperty(
-        name="Output GP Layer",
-        description="Grease Pencil layer to receive the animation keyframes",
-        items=get_output_gp_layers
     )
     
     # Controller

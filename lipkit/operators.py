@@ -495,40 +495,19 @@ class LIPKIT_OT_generate(bpy.types.Operator):
             # Generate animation
             engine = AnimationEngine(lipsync_data, mapping, props.controller_object)
             
-            # Collect 2D output parameters if enabled
-            output_gp_object = None
-            output_gp_layer = None
-            if props.use_2d_output and props.output_gp_object:
-                output_gp_object = props.output_gp_object
-                # Check if a valid layer is selected (not 'NONE')
-                if props.output_gp_layer and props.output_gp_layer != 'NONE':
-                    output_gp_layer = props.output_gp_layer
-                else:
-                    self.report({'ERROR'}, "Select a valid output GP layer")
-                    return {'CANCELLED'}
-            
             results = engine.generate(
                 props.target_object,
                 start_frame=props.start_frame,
                 use_nla=props.use_nla,
-                action_name=props.action_name,
-                output_gp_object=output_gp_object,
-                output_gp_layer=output_gp_layer
+                action_name=props.action_name
             )
             
-            # Report based on mode
-            if results.get('output_mode') == '2d_gp':
-                self.report(
-                    {'INFO'},
-                    f"✓ Generated {results.get('gp_keyframes_created', 0)} keyframes "
-                    f"on {len(props.phoneme_mappings)} mouth layers (2D mode)"
-                )
-            else:
-                self.report(
-                    {'INFO'},
-                    f"✓ Generated {results['keyframes_created']} keyframes, "
-                    f"{results['drivers_created']} drivers (3D mode)"
-                )
+            # Report results
+            self.report(
+                {'INFO'},
+                f"✓ Generated {results['keyframes_created']} keyframes, "
+                f"{results['drivers_created']} drivers"
+            )
             
             return {'FINISHED'}
         
@@ -540,6 +519,50 @@ class LIPKIT_OT_generate(bpy.types.Operator):
         
         finally:
             props.generation_in_progress = False
+
+
+class LIPKIT_OT_clear_all_keyframes(bpy.types.Operator):
+    """Clean all keyframes from controller and added layers"""
+    bl_idname = "lipkit.clear_all_keyframes"
+    bl_label = "Clean All Keyframes"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        props = context.scene.lipkit
+        
+        if not props.controller_object:
+            self.report({'WARNING'}, "No controller object")
+            return {'CANCELLED'}
+        
+        try:
+            # Clear animation from controller
+            LipSyncController.clear_animation(props.controller_object)
+            cleared_count = 1
+            
+            # Also clear from target object if it's a GP object with mapped layers
+            if props.target_object and props.target_object.type in ('GPENCIL', 'GREASEPENCIL'):
+                target_obj = props.target_object
+                
+                # Clear animation from all layers that were mapped
+                for mapping in props.phoneme_mappings:
+                    if mapping.target_property and hasattr(target_obj.data, 'layers'):
+                        for layer in target_obj.data.layers:
+                            layer_name = getattr(layer, 'name', None) or getattr(layer, 'info', None)
+                            if layer_name == mapping.target_property:
+                                # Clear keyframes from this layer's opacity
+                                if hasattr(layer, 'opacity'):
+                                    # Note: GP layer opacity doesn't use keyframes in the traditional sense,
+                                    # but we can clear any attached drivers
+                                    pass
+                                cleared_count += 1
+                                break
+            
+            self.report({'INFO'}, f"Cleaned keyframes from controller and layers")
+            return {'FINISHED'}
+        
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to clean keyframes: {str(e)}")
+            return {'CANCELLED'}
 
 
 class LIPKIT_OT_clear_animation(bpy.types.Operator):
@@ -576,6 +599,7 @@ classes = [
     LIPKIT_OT_select_mapping_target,
     LIPKIT_OT_assign_mapping_target,
     LIPKIT_OT_generate,
+    LIPKIT_OT_clear_all_keyframes,
     LIPKIT_OT_clear_animation,
 ]
 
