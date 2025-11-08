@@ -133,72 +133,77 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         from .preferences import get_preferences, PreferencesDefaults
         prefs = get_preferences(context)
         
-        layout.prop(props, "phoneme_provider", text="Engine")
+        layout.label(text="Rhubarb Setup", icon='TOOL_SETTINGS')
         
-        # Show Rhubarb setup if LOCAL is selected
-        if props.phoneme_provider == 'LOCAL':
-            box = layout.box()
-            box.label(text="Rhubarb Setup:", icon='TOOL_SETTINGS')
-            
-            # Only show mode selector if using actual preferences (not fallback)
-            if not isinstance(prefs, PreferencesDefaults):
-                try:
-                    box.prop(prefs, "rhubarb_mode", text="Mode")
-                    mode = prefs.rhubarb_mode
-                except:
-                    mode = 'auto'
-            else:
+        # Mode selector
+        box = layout.box()
+        
+        # Only show mode selector if using actual preferences (not fallback)
+        if not isinstance(prefs, PreferencesDefaults):
+            try:
+                box.prop(prefs, "rhubarb_mode", text="Mode")
+                mode = prefs.rhubarb_mode
+            except:
                 mode = 'auto'
-                box.label(text="(Using auto mode)", icon='INFO')
+        else:
+            mode = 'auto'
+        
+        if mode == 'auto':
+            # Auto mode - download button
+            from .utils.rhubarb_manager import get_rhubarb_executable
+            exe = get_rhubarb_executable()
             
-            if mode == 'auto':
-                # Auto mode - download button
-                from .utils.rhubarb_manager import get_rhubarb_executable
-                exe = get_rhubarb_executable()
-                
-                if exe and os.path.exists(exe):
-                    box.label(text="✅ Installed", icon='CHECKMARK')
-                    box.label(text=os.path.basename(exe))
-                else:
-                    box.label(text="❌ Not installed", icon='ERROR')
-                    row = box.row()
-                    row.scale_y = 1.5
-                    row.operator("lipkit.download_rhubarb", text="📥 Download Rhubarb", icon='IMPORT')
-            
-            else:
-                # Manual mode - folder selector
-                tool_path = props.rhubarb_path or prefs.local_tool_path
-                
-                if tool_path and os.path.exists(tool_path):
-                    box.label(text="✅ Ready", icon='CHECKMARK')
-                    box.label(text=os.path.basename(tool_path))
-                else:
-                    box.label(text="❌ Not configured", icon='ERROR')
-                
+            if props.rhubarb_downloading:
+                # Show loading state
+                box.label(text="⏳ Downloading...", icon='PLAY')
+                box.label(text="This may take a minute", icon='INFO')
+            elif exe and os.path.exists(exe):
+                # Already installed
+                box.label(text="✅ Installed", icon='CHECKMARK')
                 row = box.row()
-                row.scale_y = 1.3
-                row.operator("lipkit.select_rhubarb_manual", text="📁 Select Folder", icon='FILE_FOLDER')
+                row.label(text=os.path.basename(exe))
+            else:
+                # Not installed
+                box.label(text="❌ Not installed", icon='ERROR')
+                row = box.row()
+                row.scale_y = 1.5
+                row.enabled = not props.rhubarb_downloading
+                row.operator("lipkit.download_rhubarb", text="📥 Download Rhubarb", icon='IMPORT')
                 
-                # Info
-                box.label(text="Download, extract, select folder", icon='INFO')
-                box.label(text="github.com/DanielSWolf/rhubarb-lip-sync")
+                if props.rhubarb_download_error:
+                    error_box = box.box()
+                    error_box.label(text="Error:", icon='ERROR')
+                    for line in props.rhubarb_download_error.split('\n'):
+                        error_box.label(text=line)
+        
+        else:
+            # Manual mode - folder selector
+            tool_path = props.rhubarb_path or prefs.local_tool_path
+            
+            if tool_path and os.path.exists(tool_path):
+                box.label(text="✅ Ready", icon='CHECKMARK')
+                box.label(text=os.path.basename(tool_path))
+            else:
+                box.label(text="❌ Not configured", icon='ERROR')
+            
+            row = box.row()
+            row.scale_y = 1.3
+            row.operator("lipkit.select_rhubarb_manual", text="📁 Select Rhubarb Folder", icon='FILE_FOLDER')
+            
+            # Info
+            box.label(text="Download and extract from:", icon='URL')
+            box.label(text="github.com/DanielSWolf/rhubarb-lip-sync/releases")
         
         layout.separator()
-        layout.prop(props, "language")
         
         # Analyze button
         row = layout.row()
         row.scale_y = 1.5
         
         if props.phoneme_data_cached:
-            row.operator("lipkit.analyze_audio", text="Re-Analyze Audio", icon='FILE_REFRESH')
+            row.operator("lipkit.analyze_audio", text="✓ Audio Analyzed - Re-Analyze", icon='FILE_REFRESH')
         else:
             row.operator("lipkit.analyze_audio", text="Analyze Audio", icon='PLAY')
-        
-        # Status
-        if props.phoneme_data_cached:
-            box = layout.box()
-            box.label(text="✓ Phoneme data ready", icon='CHECKMARK')
 
 
 class LIPKIT_PT_visual_system(bpy.types.Panel):

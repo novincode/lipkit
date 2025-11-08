@@ -49,37 +49,63 @@ class LIPKIT_OT_download_rhubarb(bpy.types.Operator):
     bl_label = "Download Rhubarb"
     bl_options = {'REGISTER'}
     
+    # Timer for checking download progress
+    _timer = None
+    
     def execute(self, context):
-        from .utils.rhubarb_manager import download_rhubarb, verify_rhubarb
-        from .preferences import get_preferences
+        # Start download in background
+        import threading
         
-        try:
-            self.report({'INFO'}, "Downloading Rhubarb... this may take a minute")
-            
-            success, result = download_rhubarb()
-            
-            if not success:
-                self.report({'ERROR'}, f"Download failed: {result}")
-                return {'CANCELLED'}
-            
-            exe_path = result
-            
-            # Verify it works
-            is_valid, msg = verify_rhubarb(exe_path)
-            if not is_valid:
-                self.report({'ERROR'}, msg)
-                return {'CANCELLED'}
-            
-            # Update preferences
-            prefs = get_preferences(context)
-            prefs.local_tool_path = exe_path
-            
-            self.report({'INFO'}, f"✅ {msg}")
-            return {'FINISHED'}
+        scene = context.scene
         
-        except Exception as e:
-            self.report({'ERROR'}, f"Download failed: {str(e)}")
-            return {'CANCELLED'}
+        # Mark as downloading
+        scene.lipkit.rhubarb_downloading = True
+        
+        def download_thread():
+            """Background thread to download Rhubarb"""
+            from .utils.rhubarb_manager import download_rhubarb, verify_rhubarb
+            from .preferences import get_preferences
+            
+            try:
+                print("📥 Starting Rhubarb download...")
+                success, result = download_rhubarb()
+                
+                if not success:
+                    print(f"❌ Download failed: {result}")
+                    scene.lipkit.rhubarb_download_error = result
+                    return
+                
+                exe_path = result
+                print(f"✅ Downloaded to: {exe_path}")
+                
+                # Verify it works
+                is_valid, msg = verify_rhubarb(exe_path)
+                if not is_valid:
+                    print(f"❌ Verification failed: {msg}")
+                    scene.lipkit.rhubarb_download_error = msg
+                    return
+                
+                # Update preferences
+                prefs = get_preferences(context)
+                prefs.local_tool_path = exe_path
+                scene.lipkit.rhubarb_path = exe_path
+                
+                print(f"✅ {msg}")
+                scene.lipkit.rhubarb_download_error = ""
+                
+            except Exception as e:
+                print(f"❌ Download error: {str(e)}")
+                scene.lipkit.rhubarb_download_error = str(e)
+            
+            finally:
+                scene.lipkit.rhubarb_downloading = False
+        
+        # Start thread
+        thread = threading.Thread(target=download_thread, daemon=True)
+        thread.start()
+        
+        self.report({'INFO'}, "Downloading Rhubarb in background...")
+        return {'FINISHED'}
 
 
 class LIPKIT_OT_select_rhubarb(bpy.types.Operator):
@@ -238,80 +264,71 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
         
         # Check cache first
         if prefs.use_cache:
+            # Always use LOCAL (Rhubarb)
             cached_data = audio_utils.load_from_cache(
                 audio_path,
-                props.language,
-                props.phoneme_provider
+                'en',  # Language not used for Rhubarb
+                'LOCAL'
             )
             
             if cached_data:
                 self.report({'INFO'}, "Loaded phoneme data from cache")
-                # Store in scene (would need a proper storage mechanism)
+                global _phoneme_data_cache
+                _phoneme_data_cache = cached_data
                 props.phoneme_data_cached = True
                 return {'FINISHED'}
         
-        # Extract phonemes
-        try:
-            provider = self._get_provider(props, prefs)
-            
-            if not provider.is_available():
-                self.report({'ERROR'}, f"Provider '{provider.name}' is not available")
-                return {'CANCELLED'}
-            
-            self.report({'INFO'}, f"Extracting phonemes using {provider.name}...")
-            
-            lipsync_data = provider.extract_phonemes(
-                audio_path,
-                language=props.language
-            )
-            
-            # Cache result
-            if prefs.use_cache:
-                audio_utils.save_to_cache(
-                    audio_path,
-                    props.language,
-                    props.phoneme_provider,
-                    lipsync_data
-                )
-            
-            # Store in scene AND module cache
-            global _phoneme_data_cache
-            _phoneme_data_cache = lipsync_data
-            props.phoneme_data_cached = True
-            
-            self.report(
-                {'INFO'},
-                f"Extracted {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)"
-            )
-            
-            return {'FINISHED'}
+        # Start analysis in background thread
+        import threading
         
-        except Exception as e:
-            self.report({'ERROR'}, f"Failed to analyze audio: {str(e)}")
-            if prefs.debug_mode:
-                traceback.print_exc()
-            return {'CANCELLED'}
-    
+        def analyze_thread():
+            """Background thread to extract phonemes"""
+            try:
+                provider = LocalPhonemeProvider(tool_path=props.rhubarb_path)
+                
+                if not provider.is_available():
+                    print(f"❌ Rhubarb is not available at: {props.rhubarb_path}")
+                    return
+                
+                print(f"📊 Extracting phonemes using Rhubarb...")
+                
+                lipsync_data = provider.extract_phonemes(audio_path, language='en')
+                
+                # Cache result
+                if prefs.use_cache:
+                    audio_utils.save_to_cache(
+                        audio_path,
+                        'en',
+                        'LOCAL',
+                        lipsync_data
+                    )
+                
+                # Store in module cache
+                global _phoneme_data_cache
+                _phoneme_data_cache = lipsync_data
+                props.phoneme_data_cached = True
+                
+                print(f"✅ Extracted {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)")
+                
+            except Exception as e:
+                print(f"❌ Failed to analyze audio: {str(e)}")
+                if prefs.debug_mode:
+                    traceback.print_exc()
+                props.phoneme_data_cached = False
+        
+        # Mark as analyzing
+        props.phoneme_data_cached = False
+        
+        # Start thread
+        thread = threading.Thread(target=analyze_thread, daemon=True)
+        thread.start()
+        
+        self.report({'INFO'}, "Analyzing audio in background...")
+        return {'FINISHED'}
     def _get_provider(self, props, prefs):
         """Get the appropriate phoneme provider"""
-        if props.phoneme_provider == 'LOCAL':
-            # Use Rhubarb path from scene properties
-            return LocalPhonemeProvider(tool_path=props.rhubarb_path)
-        
-        elif props.phoneme_provider == 'API':
-            return APIPhonemeProvider(
-                api_key=prefs.api_key,
-                endpoint=prefs.api_endpoint
-            )
-        
-        elif props.phoneme_provider == 'CUSTOM':
-            return CustomAPIProvider(
-                endpoint=prefs.custom_api_endpoint,
-                api_key=prefs.custom_api_key
-            )
-        
-        else:
-            return LocalPhonemeProvider(tool_path=props.rhubarb_path)
+        # Always use LOCAL provider (Rhubarb)
+        return LocalPhonemeProvider(tool_path=props.rhubarb_path)
 
 
 class LIPKIT_OT_load_preset(bpy.types.Operator):

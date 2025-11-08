@@ -26,19 +26,38 @@ def get_rhubarb_cache_dir() -> Path:
 def get_rhubarb_executable() -> Optional[str]:
     """
     Get path to Rhubarb executable if installed
+    Searches recursively in cache directory
     
     Returns:
         Path to rhubarb executable or None if not found
     """
     cache_dir = get_rhubarb_cache_dir()
     
-    if platform.system() == "Windows":
-        exe_path = cache_dir / "rhubarb" / "rhubarb.exe"
-    else:
-        exe_path = cache_dir / "rhubarb" / "rhubarb"
+    if not cache_dir.exists():
+        return None
     
-    if exe_path.exists():
-        return str(exe_path)
+    # Look for executable with correct name based on OS
+    if platform.system() == "Windows":
+        exe_name = "rhubarb.exe"
+    else:
+        exe_name = "rhubarb"
+    
+    # First try standard locations
+    standard_paths = [
+        cache_dir / "rhubarb" / exe_name,
+        cache_dir / exe_name,
+    ]
+    
+    for path in standard_paths:
+        if path.exists() and path.is_file():
+            return str(path)
+    
+    # Search recursively if not found in standard locations
+    for root, dirs, files in os.walk(cache_dir):
+        if exe_name in files:
+            exe_path = Path(root) / exe_name
+            if exe_path.is_file():
+                return str(exe_path)
     
     return None
 

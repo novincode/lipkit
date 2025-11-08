@@ -160,29 +160,6 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
         default=""
     )
     
-    phoneme_provider: EnumProperty(
-        name="Phoneme Provider",
-        description="Method for extracting phonemes from audio",
-        items=[
-            ('LOCAL', 'Local (Free)', 'Local phoneme extraction'),
-            ('API', 'Cloud API (Premium)', 'Cloud-based extraction (requires API key)'),
-            ('CUSTOM', 'Custom API', 'Custom API endpoint'),
-        ],
-        default='LOCAL'
-    )
-    
-    language: EnumProperty(
-        name="Language",
-        description="Audio language",
-        items=[
-            ('en', 'English', 'English'),
-            ('es', 'Spanish', 'Spanish'),
-            ('fr', 'French', 'French'),
-            ('de', 'German', 'German'),
-        ],
-        default='en'
-    )
-    
     # Visual System Section
     visual_system: EnumProperty(
         name="Visual System",
@@ -300,6 +277,19 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
         name="Generation in Progress",
         description="Whether lip sync generation is in progress",
         default=False
+    )
+    
+    # Rhubarb download state
+    rhubarb_downloading: BoolProperty(
+        name="Rhubarb Downloading",
+        description="Whether Rhubarb is currently downloading",
+        default=False
+    )
+    
+    rhubarb_download_error: StringProperty(
+        name="Rhubarb Download Error",
+        description="Error message from download if failed",
+        default=""
     )
 
 
