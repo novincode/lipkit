@@ -238,38 +238,16 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
         default='CONSTANT'
     )
     
-    # Animation easing
-    use_easing: BoolProperty(
-        name="Smooth Mouth Transitions",
-        description="Ease mouth movements between shapes instead of instant snapping",
-        default=False
-    )
-    
-    easing_type: EnumProperty(
-        name="Easing Type",
-        description="How to ease transitions",
-        items=[
-            ('ease_in_out', 'Ease In-Out', 'Smooth acceleration and deceleration'),
-            ('ease_in', 'Ease In', 'Accelerating motion'),
-            ('ease_out', 'Ease Out', 'Decelerating motion'),
-            ('smooth', 'Smooth (Linear)', 'Constant smooth motion'),
-        ],
-        default='ease_in_out'
-    )
-    
-    easing_duration: FloatProperty(
-        name="Transition Time (frames)",
-        description="How many frames to transition between mouth shapes",
-        default=3.0,
-        min=1.0,
-        max=30.0,
-        step=0.5
-    )
-    
     # State
     phoneme_data_cached: BoolProperty(
         name="Phoneme Data Cached",
         description="Whether phoneme data has been extracted",
+        default=False
+    )
+    
+    audio_analyzing: BoolProperty(
+        name="Audio Analyzing",
+        description="Whether audio is currently being analyzed",
         default=False
     )
     

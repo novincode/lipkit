@@ -45,9 +45,6 @@ class AnimationEngine:
         fps: Optional[float] = None,
         use_nla: bool = False,
         action_name: str = "LipSync",
-        use_easing: bool = False,
-        easing_type: str = 'ease_in_out',
-        easing_duration: float = 3.0,
         interpolation: str = 'LINEAR'
     ) -> Dict[str, any]:
         """
@@ -59,9 +56,6 @@ class AnimationEngine:
             fps: Frames per second (defaults to scene fps)
             use_nla: Whether to create NLA strip instead of direct keyframes
             action_name: Name for the action/NLA strip
-            use_easing: Apply easing to mouth transitions
-            easing_type: Type of easing ('ease_in_out', 'ease_in', 'ease_out', 'smooth')
-            easing_duration: Number of frames for easing transition
             interpolation: Keyframe interpolation mode ('CONSTANT', 'LINEAR', 'BEZIER')
             
         Returns:
@@ -82,16 +76,6 @@ class AnimationEngine:
             # Get index for this phoneme
             index = phoneme_to_index.get(phoneme, 0)
             frame_data[frame] = index
-        
-        # Apply easing if requested
-        if use_easing:
-            from ..utils.easing_utils import apply_easing_to_keyframes
-            frame_data = apply_easing_to_keyframes(
-                frame_data,
-                easing_type=easing_type,
-                easing_duration=easing_duration
-            )
-            print(f"✨ Applied {easing_type} easing over {easing_duration} frames")
         
         # Create action with keyframes
         if use_nla:

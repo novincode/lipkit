@@ -244,6 +244,11 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
         props = context.scene.lipkit
         prefs = get_preferences(context)
         
+        # Prevent multiple simultaneous analyses
+        if props.audio_analyzing:
+            self.report({'WARNING'}, "Audio analysis already in progress")
+            return {'CANCELLED'}
+        
         # Get audio path
         audio_path = None
         if props.audio_source == 'FILE':
@@ -264,15 +269,14 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
         
         # Check cache first
         if prefs.use_cache:
-            # Always use LOCAL (Rhubarb)
             cached_data = audio_utils.load_from_cache(
                 audio_path,
-                'en',  # Language not used for Rhubarb
+                'en',
                 'LOCAL'
             )
             
             if cached_data:
-                self.report({'INFO'}, "Loaded phoneme data from cache")
+                self.report({'INFO'}, "✓ Loaded phoneme data from cache")
                 global _phoneme_data_cache
                 _phoneme_data_cache = cached_data
                 props.phoneme_data_cached = True
@@ -288,6 +292,7 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                 
                 if not provider.is_available():
                     print(f"❌ Rhubarb is not available at: {props.rhubarb_path}")
+                    props.audio_analyzing = False
                     return
                 
                 print(f"📊 Extracting phonemes using Rhubarb...")
@@ -308,22 +313,26 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                 _phoneme_data_cache = lipsync_data
                 props.phoneme_data_cached = True
                 
-                print(f"✅ Extracted {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)")
+                print(f"✅ Audio Analyzed: {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)")
                 
             except Exception as e:
                 print(f"❌ Failed to analyze audio: {str(e)}")
                 if prefs.debug_mode:
                     traceback.print_exc()
                 props.phoneme_data_cached = False
+            
+            finally:
+                props.audio_analyzing = False
         
         # Mark as analyzing
+        props.audio_analyzing = True
         props.phoneme_data_cached = False
         
         # Start thread
         thread = threading.Thread(target=analyze_thread, daemon=True)
         thread.start()
         
-        self.report({'INFO'}, "Analyzing audio in background...")
+        self.report({'INFO'}, "⏳ Analyzing audio in background...")
         return {'FINISHED'}
     def _get_provider(self, props, prefs):
         """Get the appropriate phoneme provider"""
@@ -608,9 +617,6 @@ class LIPKIT_OT_generate(bpy.types.Operator):
                 start_frame=props.start_frame,
                 use_nla=props.use_nla,
                 action_name=props.action_name,
-                use_easing=props.use_easing,
-                easing_type=props.easing_type,
-                easing_duration=props.easing_duration,
                 interpolation=props.interpolation
             )
             

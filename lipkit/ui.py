@@ -196,13 +196,24 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         
         layout.separator()
         
-        # Analyze button
+        # Analyze button - smart state management
         row = layout.row()
         row.scale_y = 1.5
         
-        if props.phoneme_data_cached:
-            row.operator("lipkit.analyze_audio", text="✓ Audio Analyzed - Re-Analyze", icon='FILE_REFRESH')
+        # Check if phoneme data is actually available
+        from .operators import get_cached_phoneme_data
+        cached_data = get_cached_phoneme_data()
+        has_valid_data = cached_data is not None and props.phoneme_data_cached
+        
+        if props.audio_analyzing:
+            # Currently analyzing
+            row.enabled = False
+            row.operator("lipkit.analyze_audio", text="⏳ Analyzing...", icon='TIME')
+        elif has_valid_data:
+            # Data available - can re-analyze
+            row.operator("lipkit.analyze_audio", text="Re-Analyze Audio", icon='FILE_REFRESH')
         else:
+            # No data - need to analyze
             row.operator("lipkit.analyze_audio", text="Analyze Audio", icon='PLAY')
 
 
@@ -219,27 +230,17 @@ class LIPKIT_PT_visual_system(bpy.types.Panel):
         layout = self.layout
         props = context.scene.lipkit
         
+        # Just show visual system type
         layout.prop(props, "visual_system", text="Type")
-        layout.prop(props, "target_object")
         
-        # Info based on selection
-        if props.target_object:
-            obj = props.target_object
-            box = layout.box()
-            
-            if props.visual_system == 'gp_layer' and obj.type in ('GPENCIL', 'GREASEPENCIL'):
-                layer_count = len(obj.data.layers)
-                box.label(text=f"✓ {layer_count} GP layers found", icon='GREASEPENCIL')
-            
-            elif props.visual_system == 'shape_key':
-                if hasattr(obj.data, 'shape_keys') and obj.data.shape_keys:
-                    sk_count = len(obj.data.shape_keys.key_blocks) - 1  # Exclude basis
-                    box.label(text=f"✓ {sk_count} shape keys found", icon='SHAPEKEY_DATA')
-                else:
-                    box.label(text="⚠ No shape keys found", icon='ERROR')
-            
-            else:
-                box.label(text=f"Object type: {obj.type}", icon='OBJECT_DATA')
+        # Info about what this means
+        box = layout.box()
+        if props.visual_system == 'gp_layer':
+            box.label(text="Uses Grease Pencil layer opacity", icon='GREASEPENCIL')
+        elif props.visual_system == 'shape_key':
+            box.label(text="Uses 3D mesh shape keys", icon='SHAPEKEY_DATA')
+        else:
+            box.label(text="Uses image/texture switching", icon='IMAGE_DATA')
 
 
 class LIPKIT_PT_mapping(bpy.types.Panel):
@@ -284,9 +285,15 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
         
         layout.separator()
         
-        # Preset selection (with settings icon for advanced)
-        row = layout.row(align=True)
-        row.prop(props, "phoneme_preset", text="Preset")
+        # Preset selection - COMMENTED OUT: Only Rhubarb preset works for now
+        # row = layout.row(align=True)
+        # row.prop(props, "phoneme_preset", text="Preset")
+        
+        # Auto-load Rhubarb preset if not loaded
+        if len(props.phoneme_mappings) == 0:
+            box = layout.box()
+            box.label(text="Loading Rhubarb preset...", icon='INFO')
+            layout.operator("lipkit.load_preset", text="Load Rhubarb Preset", icon='IMPORT')
         
         layout.separator()
         
@@ -342,15 +349,29 @@ class LIPKIT_PT_controller(bpy.types.Panel):
         layout = self.layout
         props = context.scene.lipkit
         
+        # Controller selector - allows selecting existing or creating new
+        box = layout.box()
+        box.label(text="Select Controller:", icon='EMPTY_AXIS')
+        box.prop(props, "controller_object", text="")
+        
+        # Create new controller button
+        row = layout.row()
+        row.scale_y = 1.2
+        row.operator("lipkit.create_controller", text="Create New Controller", icon='ADD')
+        
+        # If controller selected, show management options
         if props.controller_object:
+            layout.separator()
             box = layout.box()
-            box.label(text=f"✓ {props.controller_object.name}", icon='EMPTY_AXIS')
+            box.label(text=f"Managing: {props.controller_object.name}", icon='CHECKMARK')
             
             row = box.row(align=True)
-            row.operator("lipkit.clear_animation", text="Clear", icon='X')
+            row.operator("lipkit.clear_animation", text="Clear Animation", icon='X')
             row.operator("lipkit.clear_all_keyframes", text="Clean All", icon='TRASH')
-        else:
-            layout.operator("lipkit.create_controller", icon='ADD')
+            
+            # Info
+            box.label(text="💡 You can have multiple controllers", icon='INFO')
+            box.label(text="for multiple characters!")
 
 
 class LIPKIT_PT_generate(bpy.types.Panel):
@@ -382,6 +403,12 @@ class LIPKIT_PT_generate(bpy.types.Panel):
         col = layout.column()
         col.scale_y = 2.0
         
+        # Check if currently generating
+        if props.generation_in_progress:
+            col.enabled = False
+            col.operator("lipkit.generate", text="⏳ Generating...", icon='TIME')
+            return
+        
         # Check prerequisites
         can_generate = True
         issues = []
@@ -394,9 +421,12 @@ class LIPKIT_PT_generate(bpy.types.Panel):
             can_generate = False
             issues.append("No target object")
         
-        if not props.phoneme_data_cached:
+        # Check if phoneme data is actually available
+        from .operators import get_cached_phoneme_data
+        cached_data = get_cached_phoneme_data()
+        if not cached_data or not props.phoneme_data_cached:
             can_generate = False
-            issues.append("No phoneme data")
+            issues.append("No phoneme data - analyze audio")
         
         mapped_count = sum(1 for m in props.phoneme_mappings if m.target_name and m.enabled)
         if mapped_count == 0:
@@ -416,32 +446,6 @@ class LIPKIT_PT_generate(bpy.types.Panel):
                 box.label(text=f"• {issue}")
 
 
-class LIPKIT_PT_generate_easing(bpy.types.Panel):
-    """Easing options sub-panel"""
-    bl_label = "Smooth Mouth Transitions"
-    bl_idname = "LIPKIT_PT_generate_easing"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "LipKit"
-    bl_parent_id = "LIPKIT_PT_generate"
-    bl_options = {'DEFAULT_CLOSED'}
-    
-    def draw_header(self, context):
-        props = context.scene.lipkit
-        self.layout.prop(props, "use_easing", text="")
-    
-    def draw(self, context):
-        layout = self.layout
-        props = context.scene.lipkit
-        
-        layout.enabled = props.use_easing
-        
-        box = layout.box()
-        box.prop(props, "easing_type")
-        box.prop(props, "easing_duration")
-        box.label(text="Mouth will smoothly transition between shapes", icon='CURVE_SMOOTH')
-
-
 # Registration
 classes = [
     LIPKIT_PT_main,
@@ -451,7 +455,6 @@ classes = [
     LIPKIT_PT_mapping,
     LIPKIT_PT_controller,
     LIPKIT_PT_generate,
-    LIPKIT_PT_generate_easing,
 ]
 
 
