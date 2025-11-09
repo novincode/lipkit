@@ -6,8 +6,8 @@ tagline = "Universal Lip Sync for 2D & 3D"
 version = "0.1.0"
 type = "add-on"
 
-maintainer = "LipKit Team <contact@lipkit.dev>"
-license = ["SPDX:MIT"]
+maintainer = "LipKit <contact@lipkit.dev>"
+license = ["Proprietary"]
 
 blender_version_min = "4.2.0"
 

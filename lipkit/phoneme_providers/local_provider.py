@@ -12,7 +12,7 @@ from ..core import PhonemeProvider, LipSyncData, PhonemeData, AudioFileError, Ex
 class LocalPhonemeProvider(PhonemeProvider):
     """
     Local phoneme extraction using external tools like Rhubarb Lip Sync
-    This is the FREE option - no API calls required, but needs tool installed
+    Uses local tool installation for offline phoneme extraction.
     
     Download Rhubarb: https://github.com/DanielSWolf/rhubarb-lip-sync
     """

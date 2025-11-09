@@ -1,21 +1,46 @@
-MIT License
+# LipKit - End User License Agreement (EULA)
 
-Copyright (c) 2024 LipKit Team
+**Last Updated: November 2025**
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## 1. License Grant
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This software ("LipKit" or "the Software") is licensed to you for personal and professional use under the terms of this EULA. You are granted a non-exclusive, non-transferable license to use LipKit in Blender for your animation projects.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## 2. Restrictions
+
+You MAY:
+- ✅ Use LipKit in your personal and commercial animation projects
+- ✅ Use LipKit to create animations for clients (freelance work)
+- ✅ Integrate LipKit animations into your published works
+- ✅ Distribute animations created WITH LipKit without restriction
+
+You MAY NOT:
+- ❌ Redistribute, resell, or share the LipKit software itself
+- ❌ Decompile, reverse engineer, or modify the source code
+- ❌ Create derivative works or plugins based on LipKit
+- ❌ Share your license key or installation files with others
+- ❌ Use LipKit on more machines than permitted by your license
+
+## 3. Intellectual Property
+
+All intellectual property rights in LipKit are retained by the author. This EULA does not grant you ownership of the software, only a limited license to use it.
+
+## 4. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.
+
+## 5. Limitation of Liability
+
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DAMAGES (INCLUDING, WITHOUT LIMITATION, LOST PROFITS, BUSINESS INTERRUPTION, OR LOST INFORMATION) ARISING OUT OF YOUR USE OF THIS SOFTWARE.
+
+## 6. Termination
+
+This license is effective until terminated. Your rights terminate immediately if you breach any term of this EULA.
+
+## 7. Governing Law
+
+This EULA is governed by applicable law and is personal to you.
+
+---
+
+**LipKit - Proprietary Software © 2024-2025**
