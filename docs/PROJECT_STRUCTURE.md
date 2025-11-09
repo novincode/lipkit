@@ -2,16 +2,15 @@
 
 ```
 lipsync-blender/
-├── README.md                          # Main documentation
+├── README.md                          # Main entry point
+├── SETUP.md                           # Detailed setup guide
 ├── LICENSE                            # MIT License
-├── QUICKSTART.md                      # Quick start guide
 ├── .gitignore                         # Git ignore rules
-├── AI_PROMPT.txt                      # Original project requirements
 │
 ├── lipkit/                            # Main extension folder
 │   ├── __init__.py                    # Extension entry point & registration
 │   ├── blender_manifest.toml          # Blender 4.2+ extension metadata
-│   ├── preferences.py                 # Addon preferences (API keys, paths)
+│   ├── preferences.py                 # Addon preferences (Rhubarb setup)
 │   ├── properties.py                  # Scene property groups
 │   ├── operators.py                   # Blender operators
 │   ├── ui.py                          # UI panels
@@ -25,7 +24,7 @@ lipsync-blender/
 │   │
 │   ├── phoneme_providers/             # Phoneme extraction implementations
 │   │   ├── __init__.py
-│   │   ├── local_provider.py          # Local tools (Rhubarb, Allosaurus)
+│   │   ├── local_provider.py          # Local tools (Rhubarb)
 │   │   └── api_provider.py            # Cloud API & custom endpoints
 │   │
 │   ├── visual_systems/                # Visual target handlers
@@ -34,26 +33,32 @@ lipsync-blender/
 │   │
 │   ├── utils/                         # Utilities
 │   │   ├── __init__.py
-│   │   └── audio_utils.py             # Audio loading, VSE, caching
+│   │   ├── audio_utils.py             # Audio loading, VSE, caching, conversion
+│   │   ├── easing_utils.py            # Animation easing curves
+│   │   ├── rhubarb_manager.py         # GitHub download & installation
+│   │   └── property_selector.py       # UI property selection
 │   │
 │   └── presets/                       # Phoneme presets (JSON)
+│       ├── arpabet.json               # Full English phoneme set
 │       ├── preston_blair.json         # Classic 9-shape preset
-│       └── arpabet.json               # Full English phoneme set
+│       └── rhubarb.json               # Rhubarb-optimized (A-H, X)
 │
 └── docs/                              # Documentation
+    ├── QUICKSTART.md                  # Quick start workflow
     ├── ARCHITECTURE.md                # Technical design & internals
     ├── API.md                         # Python API reference
+    ├── PROJECT_STRUCTURE.md           # This file
     └── DEVELOPMENT.md                 # Contributing & extending guide
 ```
 
 ## File Count Summary
 
-- **Python files**: 13
-- **JSON presets**: 2
-- **Documentation**: 6 files
+- **Python files**: 15 (core + providers + systems + utils + UI)
+- **JSON presets**: 3 (arpabet, preston_blair, rhubarb)
+- **Documentation**: 5 files (README, SETUP, QUICKSTART, ARCHITECTURE, API, PROJECT_STRUCTURE, DEVELOPMENT)
 - **Configuration**: 2 files (.gitignore, blender_manifest.toml)
 
-**Total**: 23 files organized in 7 directories
+**Total**: ~25 files organized in 7 directories
 
 ## Key Design Decisions
 
@@ -93,29 +98,32 @@ lipsync-blender/
 - **Total**: ~2,300 lines of Python
 
 ### Features Implemented
-✅ Local phoneme extraction (with mock data fallback)
-✅ Cloud API provider (ready for backend)
-✅ Custom API provider
-✅ Grease Pencil layer system
-✅ Shape key system
-✅ Controller creation & management
-✅ Driver generation
+✅ Local phoneme extraction (Rhubarb - auto-download or manual)
+✅ Real-time audio analysis (non-blocking)
+✅ Audio format conversion (MP3, M4A, OGG → WAV)
+✅ Smooth mouth transitions (easing curves)
+✅ Grease Pencil layer opacity control
+✅ Shape key value control
+✅ Clean animation timeline (single controller property)
+✅ Driver generation with mapping
 ✅ NLA strip support
-✅ Audio from file or VSE
-✅ Preset system (2 presets included)
-✅ Caching system
-✅ Auto-mapping based on names
-✅ Comprehensive UI panels
-✅ Error handling & validation
-✅ Preferences for API keys & paths
+✅ Audio from file or VSE strip
+✅ Phoneme preset system (3 presets included)
+✅ Smart auto-mapping based on layer/key names
+✅ "Clean All Keyframes" operator
+✅ Comprehensive error handling
+✅ Preferences UI for setup & configuration
 
-### Features Planned (TODO in code)
-- Image sequence system (texture switching)
-- Geometry Nodes system
+### Features Planned (Future)
+- Cloud API provider integration
+- Custom API provider template
+- Image sequence texture switching
+- Geometry Nodes attribute drivers
 - Real-time preview
 - Batch processing
-- Whisper integration
-- Better audio duration detection
+- Whisper speech recognition integration
+- Multi-language support
+- Animation preview in viewport
 
 ## How to Use This Structure
 

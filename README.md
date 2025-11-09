@@ -1,34 +1,35 @@
-# 🎬 LipKit - Universal Lip Sync for Blender
+# 🎬 LipKit: Blender Auto Lip Sync for 3D/2D Mouths
 
 **Automatic lip sync for 2D (Grease Pencil) and 3D (Shape Keys) animations.**
 
-Clean timeline, real phoneme extraction, production-ready.
+Real phoneme extraction with **Rhubarb Lip Sync**. Clean timeline. Production-ready.
+
+**Works with:** Blender 3.2+ | Shape Keys | Grease Pencil Layers
 
 ---
 
-## ⚡ Quick Start (5 minutes)
+## ⚡ Quick Start (2 minutes)
 
 ### 1. Install LipKit Extension
 - Add this repository as a local extension in Blender
 - Enable "LipKit" in Preferences → Extensions
 
-### 2. Download Rhubarb (FREE tool)
-1. Go to: https://github.com/DanielSWolf/rhubarb-lip-sync/releases
-2. Download for your OS (macOS/Windows/Linux)
-3. Extract the ZIP file
-4. Remember where you put the `rhubarb` executable
+### 2. Setup Rhubarb (Auto or Manual)
+**Option A: Auto-Download (Recommended)**
+1. Open Blender Preferences → Extensions → LipKit
+2. Set "Rhubarb Setup" to **Auto**
+3. Click **"📥 Download Rhubarb"**
+4. Wait 1-2 minutes ✓
 
-### 3. Configure Tool Path
-1. Open Blender
-2. Press `N` → Click "LipKit" tab
-3. **Expand "Setup" panel** (at the top)
-4. Click "Configure Tool Path"
-5. Navigate to your `rhubarb` executable
-6. Click OK
+**Option B: Manual Setup**
+1. Download from: https://github.com/DanielSWolf/rhubarb-lip-sync/releases
+2. Set "Rhubarb Setup" to **Manual**
+3. Click **"📁 Select Rhubarb Folder"**
+4. Navigate to your `rhubarb` executable
 
 **Status should show: ✅ Ready**
 
-### 4. Create Mouth Shapes
+### 3. Create Mouth Shapes
 
 **For Grease Pencil (2D):**
 - Create 9 layers named: `X`, `A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`
@@ -50,7 +51,7 @@ Clean timeline, real phoneme extraction, production-ready.
 - `G` = K/G (tongue back)
 - `H` = OO (food, you)
 
-### 5. Generate Lip Sync
+### 4. Generate Lip Sync
 
 1. Add audio to VSE (or use File source)
 2. Click **"Analyze Audio"** ← Rhubarb extracts phonemes

@@ -19,15 +19,15 @@
 **1. Prepare Mouth Drawings**
 - Create GP object
 - Draw 9 mouth shapes on separate layers:
-  - `Mouth_REST` - closed
-  - `Mouth_AH` - open wide
-  - `Mouth_EE` - smiling
-  - `Mouth_OH` - round
-  - `Mouth_OO` - pucker
-  - `Mouth_M` - lips closed
-  - `Mouth_F` - lip to teeth
-  - `Mouth_L` - tongue up
-  - `Mouth_S` - teeth showing
+  - `X` - REST (closed)
+  - `A` - AH (father, hot)
+  - `B` - M/B/P (lips closed)
+  - `C` - EE (see, tree)
+  - `D` - L/D/T (tongue up)
+  - `E` - OH (go, show)
+  - `F` - F/V (lip to teeth)
+  - `G` - K/G (tongue back)
+  - `H` - OO (food, you)
 
 **2. Open LipKit Panel**
 - Press `N` to open sidebar
@@ -41,7 +41,7 @@
 **4. Set Up Target**
 - Visual System → "Grease Pencil Layers"
 - Target Object → Select your GP object
-- Preset → "Preston Blair (9)"
+- Preset → "Rhubarb (A-H, X)" (recommended - matches Rhubarb phonemes)
 - Click "Load Preset"
 - Click "Auto-Map Targets"
 
@@ -58,7 +58,7 @@
 **1. Prepare Shape Keys**
 - Select head mesh
 - Add shape keys (Object Data Properties → Shape Keys)
-- Create keys for: AH, EE, OH, OO, M, F, L, S
+- Create keys for: `X`, `A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`
 
 **2-5. Same as 2D**, but choose:
 - Visual System → "Shape Keys (3D)"
@@ -67,18 +67,26 @@
 
 ### Naming Conventions
 **Good names** (auto-maps easily):
-- `Mouth_AH`, `Mouth_EE`
-- `AH_shape`, `EE_shape`
-- `viseme_ah`, `viseme_ee`
+- `A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`, `X`
+- `Mouth_A`, `Mouth_B`, etc.
+- `viseme_a`, `viseme_b`, etc.
+
+**Why these names?**
+- They match Rhubarb phoneme extraction
+- They're short and standardized
+- Auto-Map feature recognizes them automatically
 
 **Bad names**:
 - `Layer 1`, `Layer 2`
-- Random names
+- Random descriptions
+- Phoneme names like "AH", "EE" (use letters instead)
 
 ### Audio Sources
 You can use either:
-- **External file**: Any .wav, .mp3, .ogg
+- **External file**: MP3, WAV, M4A, OGG, FLAC (auto-converts to WAV)
 - **VSE strip**: Audio already in timeline
+
+**Note:** MP3/M4A conversion requires ffmpeg (`brew install ffmpeg` on macOS)
 
 ### Timeline Organization
 LipKit keeps timeline clean:
@@ -88,11 +96,12 @@ LipKit keeps timeline clean:
 
 Traditional method would clutter timeline with hundreds of keyframes!
 
-### Testing Without Phoneme Tool
-LipKit includes mock data for testing:
-- Works without installing Rhubarb/Allosaurus
-- Perfect for testing your setup
-- Real tool needed for production
+### Smooth Transitions
+LipKit can smooth mouth movements between shapes:
+- Enable **"Smooth Mouth Transitions"** in Generate panel
+- Choose easing type: Ease In-Out, Ease In, Ease Out, or Linear
+- Set transition time (1-30 frames)
+- Result: Natural blending instead of instant switching
 
 ## 🔧 Common Issues
 
