@@ -93,7 +93,7 @@ LipKit automatically:
 
 3. **Setup target:**
    - Visual System: Choose "Grease Pencil Layers" or "Shape Keys"
-   - Target Object: Select your mouth object
+   - Mouth Object: Select your mouth object
    - Preset: Select "Rhubarb (A-H, X)"
    - Click **"Load Preset"**
 

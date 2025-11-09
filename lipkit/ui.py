@@ -258,7 +258,7 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
         
         # Target object selector FIRST
         box = layout.box()
-        box.label(text="Animation Target:", icon='OBJECT_DATA')
+        box.label(text="Mouth Object:", icon='OUTLINER_OB_GREASEPENCIL')
         box.prop(props, "target_object", text="")
         
         if props.target_object:

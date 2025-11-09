@@ -108,7 +108,7 @@ Real phoneme extraction with **Rhubarb Lip Sync**. Clean timeline. Production-re
 ### Animation doesn't play
 - Make sure controller object exists (Create Controller)
 - Check drivers in Graph Editor → Drivers tab
-- Verify target object is correct
+- Verify mouth object is correct
 
 ---
 

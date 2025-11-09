@@ -546,11 +546,11 @@ for item in preset_data["mappings"]:
     )
 
 # 4. Generate animation
-target_obj = bpy.data.objects["GP_Mouth"]
+mouth_obj = bpy.data.objects["GP_Mouth"]
 engine = AnimationEngine(lipsync_data, mapping, controller)
 
 results = engine.generate(
-    target_object=target_obj,
+    mouth_object=mouth_obj,
     start_frame=1,
     fps=24,
     use_nla=True,

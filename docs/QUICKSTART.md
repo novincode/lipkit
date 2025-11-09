@@ -40,7 +40,7 @@
 
 **4. Set Up Target**
 - Visual System → "Grease Pencil Layers"
-- Target Object → Select your GP object
+- Mouth Object → Select your GP object
 - Preset → "Rhubarb (A-H, X)" (recommended - matches Rhubarb phonemes)
 - Click "Load Preset"
 - Click "Auto-Map Targets"
@@ -118,7 +118,7 @@ LipKit can smooth mouth movements between shapes:
 ### Animation doesn't play
 1. Check controller exists
 2. Verify drivers in Graph Editor → Drivers
-3. Ensure target object is correct
+3. Ensure mouth object is correct
 
 ### Layers not switching
 1. Check layer names match mappings
@@ -152,7 +152,7 @@ from lipkit.core.animation_engine import quick_generate
 # Generate lip sync with one function!
 results = quick_generate(
     audio_path="/path/to/audio.wav",
-    target_object=bpy.data.objects["GP_Mouth"],
+    mouth_object=bpy.data.objects["GP_Mouth"],
     visual_system_type="gp_layer",
     preset_name="preston_blair",
     start_frame=1
