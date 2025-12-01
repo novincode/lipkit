@@ -23,6 +23,12 @@ def get_cached_phoneme_data():
     return _phoneme_data_cache
 
 
+def clear_cached_phoneme_data():
+    """Clear the module-level phoneme data cache"""
+    global _phoneme_data_cache
+    _phoneme_data_cache = None
+
+
 class LIPKIT_OT_refresh_vse_strips(bpy.types.Operator):
     """Refresh the list of VSE sound strips"""
     bl_idname = "lipkit.refresh_vse_strips"
@@ -859,6 +865,27 @@ class LIPKIT_OT_load_phoneme_data(bpy.types.Operator):
             return {'CANCELLED'}
 
 
+class LIPKIT_OT_clear_phoneme_data(bpy.types.Operator):
+    """Clear analyzed phoneme data"""
+    bl_idname = "lipkit.clear_phoneme_data"
+    bl_label = "Clear Phoneme Data"
+    bl_options = {'REGISTER'}
+    
+    def execute(self, context):
+        props = context.scene.lipkit
+        
+        # Clear all phoneme data
+        props.phoneme_data_cached = False
+        props.has_phoneme_data = False
+        props.phoneme_data_json = ""
+        
+        # Clear module cache
+        clear_cached_phoneme_data()
+        
+        self.report({'INFO'}, "✓ Phoneme data cleared")
+        return {'FINISHED'}
+
+
 # Registration
 classes = [
     LIPKIT_OT_refresh_vse_strips,
@@ -870,6 +897,7 @@ classes = [
     LIPKIT_OT_analyze_audio,
     LIPKIT_OT_save_phoneme_data,
     LIPKIT_OT_load_phoneme_data,
+    LIPKIT_OT_clear_phoneme_data,
     LIPKIT_OT_load_preset,
     LIPKIT_OT_auto_map_targets,
     LIPKIT_OT_select_mapping_target,

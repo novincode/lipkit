@@ -142,6 +142,35 @@ def get_mesh_objects(self, context):
     return items
 
 
+def clear_phoneme_data(props):
+    """Clear all phoneme data when audio source changes"""
+    props.phoneme_data_cached = False
+    props.has_phoneme_data = False
+    props.phoneme_data_json = ""
+    
+    # Clear module cache too
+    try:
+        from .operators import clear_cached_phoneme_data
+        clear_cached_phoneme_data()
+    except:
+        pass
+
+
+def on_audio_filepath_changed(self, context):
+    """Called when audio file path changes - clear phoneme data"""
+    clear_phoneme_data(self)
+
+
+def on_vse_strip_changed(self, context):
+    """Called when VSE strip selection changes - clear phoneme data"""
+    clear_phoneme_data(self)
+
+
+def on_audio_source_changed(self, context):
+    """Called when audio source type changes - clear phoneme data"""
+    clear_phoneme_data(self)
+
+
 def on_preset_changed(self, context):
     """Auto-load preset when selection changes"""
     # Import here to avoid circular imports
@@ -228,20 +257,23 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
             ('FILE', 'File', 'Load audio from external file'),
             ('VSE', 'VSE Strip', 'Use audio from Video Sequence Editor'),
         ],
-        default='FILE'
+        default='FILE',
+        update=on_audio_source_changed
     )
     
     audio_filepath: StringProperty(
         name="Audio File",
         description="Path to audio file",
         subtype='FILE_PATH',
-        default=""
+        default="",
+        update=on_audio_filepath_changed
     )
     
     vse_strip: EnumProperty(
         name="VSE Strip",
         description="Sound strip from Video Sequence Editor",
-        items=get_sound_strips
+        items=get_sound_strips,
+        update=on_vse_strip_changed
     )
     
     # Phoneme Engine Section

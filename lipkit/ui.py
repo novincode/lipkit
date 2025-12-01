@@ -239,23 +239,29 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
             # No data - need to analyze
             row.operator("lipkit.analyze_audio", text="Analyze Audio", icon='PLAY')
         
-        # Save/Load phoneme data buttons
+        # Save/Load/Clear phoneme data buttons
         layout.separator()
         
-        row = layout.row(align=True)
-        row.scale_y = 1.2
-        
-        # Save button - only if we have data
-        save_btn = row.operator("lipkit.save_phoneme_data", text="💾 Save Data", icon='EXPORT')
-        save_btn.enabled = props.has_phoneme_data and has_valid_data
-        
-        # Load button - always available
-        row.operator("lipkit.load_phoneme_data", text="📂 Load Data", icon='IMPORT')
-        
-        # Show status
+        # Show different buttons based on state
         if has_valid_data:
+            # We have data - show Save and Clear buttons
+            row = layout.row(align=True)
+            row.scale_y = 1.2
+            row.operator("lipkit.save_phoneme_data", text="💾 Save", icon='EXPORT')
+            row.operator("lipkit.clear_phoneme_data", text="🗑️ Clear", icon='TRASH')
+            
+            # Also show Load as secondary option
+            row = layout.row()
+            row.operator("lipkit.load_phoneme_data", text="📂 Load Different Data", icon='IMPORT')
+            
+            # Status
             box = layout.box()
             box.label(text="✅ Phoneme data ready", icon='CHECKMARK')
+        else:
+            # No data - show Load button prominently
+            row = layout.row()
+            row.scale_y = 1.5
+            row.operator("lipkit.load_phoneme_data", text="📂 Load Phoneme Data", icon='IMPORT')
 
 
 class LIPKIT_PT_visual_system(bpy.types.Panel):
