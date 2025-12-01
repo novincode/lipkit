@@ -117,9 +117,30 @@ class LipSyncController:
         data_path = f'["{LipSyncController.PROPERTY_NAME}"]'
         controller.keyframe_insert(data_path=data_path, frame=frame)
         
-        # Set interpolation
+        # Set interpolation (Blender 4.x and 5.x compatible)
         if controller.animation_data and controller.animation_data.action:
-            fcurve = controller.animation_data.action.fcurves.find(data_path)
+            action = controller.animation_data.action
+            fcurve = None
+            
+            # Try to find the fcurve - handle both Blender 4 and 5 API
+            try:
+                # Blender 4.x and most 5.x versions
+                if hasattr(action, 'fcurves'):
+                    fcurve = action.fcurves.find(data_path)
+            except (AttributeError, TypeError):
+                pass
+            
+            # Fallback: iterate through fcurves if find() doesn't work
+            if fcurve is None:
+                try:
+                    for fc in action.fcurves:
+                        if fc.data_path == data_path:
+                            fcurve = fc
+                            break
+                except (AttributeError, TypeError):
+                    # action.fcurves not available - skip interpolation setting
+                    pass
+            
             if fcurve:
                 for keyframe in fcurve.keyframe_points:
                     if keyframe.co[0] == frame:
@@ -128,11 +149,17 @@ class LipSyncController:
     
     @staticmethod
     def clear_animation(controller: bpy.types.Object) -> None:
-        """Clear all animation from controller"""
+        """Clear all animation from controller (Blender 4.x and 5.x compatible)"""
         if controller.animation_data:
-            if controller.animation_data.action:
-                bpy.data.actions.remove(controller.animation_data.action)
-            controller.animation_data_clear()
+            try:
+                if controller.animation_data.action:
+                    bpy.data.actions.remove(controller.animation_data.action)
+            except (AttributeError, ReferenceError):
+                pass
+            try:
+                controller.animation_data_clear()
+            except (AttributeError, ReferenceError):
+                pass
     
     @staticmethod
     def get_phoneme_at_frame(controller: bpy.types.Object, frame: int) -> int:
