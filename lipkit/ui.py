@@ -108,12 +108,35 @@ class LIPKIT_PT_audio(bpy.types.Panel):
         if props.audio_source == 'FILE':
             layout.prop(props, "audio_filepath", text="")
         elif props.audio_source == 'VSE':
-            layout.prop(props, "vse_strip", text="Strip")
+            # Refresh button to force re-scan
+            row = layout.row(align=True)
+            row.prop(props, "vse_strip", text="")
+            row.operator("lipkit.refresh_vse_strips", text="", icon='FILE_REFRESH')
+            
+            # Count sounds across all scenes
+            sound_count = 0
+            direct_sound_count = len(bpy.data.sounds)
+            
+            for scene in bpy.data.scenes:
+                seq = getattr(scene, 'sequence_editor', None)
+                if seq:
+                    seqs = getattr(seq, 'sequences_all', None) or getattr(seq, 'sequences', [])
+                    if seqs:
+                        for s in seqs:
+                            if getattr(s, 'type', '') == 'SOUND':
+                                sound_count += 1
             
             if props.vse_strip == 'NONE':
                 box = layout.box()
-                box.label(text="No sound strips found", icon='INFO')
-                box.label(text="Add a sound strip to VSE")
+                if sound_count == 0 and direct_sound_count == 0:
+                    box.label(text="No sounds found", icon='ERROR')
+                    box.label(text="Add audio to VSE or load a sound file", icon='INFO')
+                elif sound_count == 0 and direct_sound_count > 0:
+                    box.label(text=f"No VSE strips, but {direct_sound_count} sounds loaded", icon='INFO')
+                    box.label(text="Click refresh ↻ to update list", icon='FILE_REFRESH')
+                else:
+                    box.label(text=f"Found {sound_count} VSE strips", icon='INFO')
+                    box.label(text="Click refresh ↻ if not showing", icon='FILE_REFRESH')
 
 
 class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
@@ -215,6 +238,24 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         else:
             # No data - need to analyze
             row.operator("lipkit.analyze_audio", text="Analyze Audio", icon='PLAY')
+        
+        # Save/Load phoneme data buttons
+        layout.separator()
+        
+        row = layout.row(align=True)
+        row.scale_y = 1.2
+        
+        # Save button - only if we have data
+        save_btn = row.operator("lipkit.save_phoneme_data", text="💾 Save Data", icon='EXPORT')
+        save_btn.enabled = props.has_phoneme_data and has_valid_data
+        
+        # Load button - always available
+        row.operator("lipkit.load_phoneme_data", text="📂 Load Data", icon='IMPORT')
+        
+        # Show status
+        if has_valid_data:
+            box = layout.box()
+            box.label(text="✅ Phoneme data ready", icon='CHECKMARK')
 
 
 class LIPKIT_PT_visual_system(bpy.types.Panel):
@@ -285,23 +326,13 @@ class LIPKIT_PT_mapping(bpy.types.Panel):
         
         layout.separator()
         
-        # Preset selection - COMMENTED OUT: Only Rhubarb preset works for now
-        # row = layout.row(align=True)
-        # row.prop(props, "phoneme_preset", text="Preset")
-        
-        # Auto-load Rhubarb preset if not loaded
-        if len(props.phoneme_mappings) == 0:
-            box = layout.box()
-            box.label(text="Loading Rhubarb preset...", icon='INFO')
-            layout.operator("lipkit.load_preset", text="Load Rhubarb Preset", icon='IMPORT')
-        
-        layout.separator()
-        
         # Manual mapping section
         if len(props.phoneme_mappings) == 0:
             box = layout.box()
-            box.label(text="Load a preset first", icon='INFO')
-            layout.operator("lipkit.load_preset", text="Load Preset", icon='PRESET')
+            box.label(text="No mouth shapes loaded", icon='INFO')
+            row = box.row()
+            row.scale_y = 1.3
+            row.operator("lipkit.load_preset", text="📥 Load Mouth Shapes", icon='IMPORT')
         else:
             # Stats at top
             mapped_count = sum(1 for m in props.phoneme_mappings 

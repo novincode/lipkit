@@ -11,23 +11,56 @@ from typing import Optional, Tuple
 from ..core import LipSyncData
 
 
-def get_audio_from_vse(strip_name: str) -> Optional[str]:
+def get_audio_from_vse(strip_identifier: str) -> Optional[str]:
     """
-    Extract audio file path from Video Sequence Editor strip
+    Extract audio file path from Video Sequence Editor strip or direct sound
     
     Args:
-        strip_name: Name of the sound strip
+        strip_identifier: Strip identifier in format:
+            - "scene_name::strip_name" (VSE strip)
+            - "SOUND::sound_name" (direct sound from bpy.data.sounds)
+            - "strip_name" (legacy fallback - current scene)
         
     Returns:
         Absolute path to audio file, or None if not found
     """
-    scene = bpy.context.scene
+    # Handle direct sound reference (from bpy.data.sounds)
+    if strip_identifier.startswith("SOUND::"):
+        sound_name = strip_identifier[7:]  # Remove "SOUND::" prefix
+        sound = bpy.data.sounds.get(sound_name)
+        if sound and sound.filepath:
+            return bpy.path.abspath(sound.filepath)
+        return None
     
-    if not scene.sequence_editor:
+    # Handle scene::strip format
+    if "::" in strip_identifier:
+        scene_name, strip_name = strip_identifier.split("::", 1)
+        scene = bpy.data.scenes.get(scene_name)
+    else:
+        # Fallback: try current scene
+        scene = bpy.context.scene
+        strip_name = strip_identifier
+    
+    if not scene:
+        return None
+    
+    # Get sequence editor
+    seq_editor = getattr(scene, 'sequence_editor', None)
+    if not seq_editor:
+        return None
+    
+    # Try to get sequences
+    sequences = None
+    if hasattr(seq_editor, 'sequences_all') and seq_editor.sequences_all:
+        sequences = seq_editor.sequences_all
+    elif hasattr(seq_editor, 'sequences') and seq_editor.sequences:
+        sequences = seq_editor.sequences
+    
+    if not sequences:
         return None
     
     # Find the strip
-    strip = scene.sequence_editor.sequences_all.get(strip_name)
+    strip = sequences.get(strip_name)
     
     if not strip:
         return None
@@ -35,20 +68,33 @@ def get_audio_from_vse(strip_name: str) -> Optional[str]:
     if strip.type != 'SOUND':
         return None
     
-    # Get absolute path
-    return bpy.path.abspath(strip.sound.filepath)
+    # Get sound and return absolute path
+    sound = getattr(strip, 'sound', None)
+    if sound and sound.filepath:
+        return bpy.path.abspath(sound.filepath)
+    
+    return None
 
 
-def get_vse_strip_info(strip_name: str) -> Optional[dict]:
+def get_vse_strip_info(strip_identifier: str) -> Optional[dict]:
     """
     Get information about a VSE sound strip
+    
+    Args:
+        strip_identifier: Strip identifier in format "scene_name::strip_name" or just "strip_name"
     
     Returns:
         Dictionary with strip info: start_frame, duration_frames, fps, audio_path
     """
-    scene = bpy.context.scene
+    # Parse the identifier
+    if "::" in strip_identifier:
+        scene_name, strip_name = strip_identifier.split("::", 1)
+        scene = bpy.data.scenes.get(scene_name)
+    else:
+        scene = bpy.context.scene
+        strip_name = strip_identifier
     
-    if not scene.sequence_editor:
+    if not scene or not scene.sequence_editor:
         return None
     
     strip = scene.sequence_editor.sequences_all.get(strip_name)
@@ -62,6 +108,7 @@ def get_vse_strip_info(strip_name: str) -> Optional[dict]:
         "fps": scene.render.fps,
         "audio_path": bpy.path.abspath(strip.sound.filepath),
         "channel": strip.channel,
+        "scene": scene.name,
     }
 
 
@@ -227,6 +274,54 @@ def clear_cache() -> None:
             cache_file.unlink()
         except:
             pass
+
+
+def save_phoneme_data_to_file(filepath: str, lipsync_data: LipSyncData) -> Tuple[bool, str]:
+    """
+    Save phoneme data to a JSON file (user-specified location)
+    
+    Args:
+        filepath: User-selected file path
+        lipsync_data: LipSync data to save
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        # Ensure .json extension
+        if not filepath.endswith('.json'):
+            filepath += '.json'
+        
+        with open(filepath, 'w') as f:
+            json.dump(lipsync_data.to_dict(), f, indent=2)
+        
+        return True, f"Saved phoneme data to: {filepath}"
+    except Exception as e:
+        return False, f"Failed to save: {str(e)}"
+
+
+def load_phoneme_data_from_file(filepath: str) -> Tuple[bool, Optional[LipSyncData], str]:
+    """
+    Load phoneme data from a JSON file
+    
+    Args:
+        filepath: Path to JSON file
+        
+    Returns:
+        (success, lipsync_data_or_none, message)
+    """
+    try:
+        if not os.path.exists(filepath):
+            return False, None, f"File not found: {filepath}"
+        
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        
+        lipsync_data = LipSyncData.from_dict(data)
+        return True, lipsync_data, f"Loaded phoneme data from: {filepath}"
+    
+    except Exception as e:
+        return False, None, f"Failed to load: {str(e)}"
 
 
 def time_to_frame(time_seconds: float, fps: float) -> int:

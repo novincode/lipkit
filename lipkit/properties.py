@@ -14,14 +14,106 @@ from bpy.props import (
 )
 
 
+def get_all_scenes_with_sequencer():
+    """Get all scenes that might have a sequencer, Blender 4.x and 5.x compatible"""
+    scenes = set()
+    
+    # Add all scenes from bpy.data.scenes
+    for scene in bpy.data.scenes:
+        scenes.add(scene)
+    
+    # Blender 5.x: Check workspace.sequencer_scene
+    try:
+        for workspace in bpy.data.workspaces:
+            seq_scene = getattr(workspace, 'sequencer_scene', None)
+            if seq_scene:
+                scenes.add(seq_scene)
+    except:
+        pass
+    
+    # Blender 5.x: Check context.sequencer_scene if available
+    try:
+        ctx = bpy.context
+        if hasattr(ctx, 'sequencer_scene') and ctx.sequencer_scene:
+            scenes.add(ctx.sequencer_scene)
+    except:
+        pass
+    
+    return list(scenes)
+
+
 def get_sound_strips(self, context):
-    """Get list of sound strips from VSE"""
+    """Get list of sound strips from VSE across ALL scenes - Blender 4.2+ and 5.x compatible"""
     items = [('NONE', 'None', 'No sound strip selected')]
     
-    if context.scene.sequence_editor:
-        for strip in context.scene.sequence_editor.sequences_all:
-            if strip.type == 'SOUND':
-                items.append((strip.name, strip.name, f"Sound strip: {strip.name}"))
+    found_sounds = []
+    
+    # Get all possible scenes
+    all_scenes = get_all_scenes_with_sequencer()
+    
+    for scene in all_scenes:
+        # Get sequence editor - try multiple methods for Blender 5 compatibility
+        seq_editor = None
+        
+        # Method 1: Direct attribute
+        if hasattr(scene, 'sequence_editor') and scene.sequence_editor:
+            seq_editor = scene.sequence_editor
+        
+        if not seq_editor:
+            continue
+        
+        # Get sequences - try multiple attributes
+        sequences = None
+        
+        # Try sequences_all first (includes muted/hidden)
+        if hasattr(seq_editor, 'sequences_all') and seq_editor.sequences_all:
+            sequences = seq_editor.sequences_all
+        # Fallback to sequences
+        elif hasattr(seq_editor, 'sequences') and seq_editor.sequences:
+            sequences = seq_editor.sequences
+        
+        if not sequences:
+            continue
+        
+        for strip in sequences:
+            try:
+                strip_type = getattr(strip, 'type', '')
+                
+                if strip_type == 'SOUND':
+                    # Use unique identifier: scene_name::strip_name
+                    unique_id = f"{scene.name}::{strip.name}"
+                    channel = getattr(strip, 'channel', 0)
+                    
+                    # Get sound filepath for tooltip
+                    sound = getattr(strip, 'sound', None)
+                    filepath = ""
+                    if sound:
+                        filepath = getattr(sound, 'filepath', '')
+                    
+                    # Show scene, channel, and strip name
+                    label = f"[{scene.name}] Ch{channel}: {strip.name}"
+                    tooltip = f"Scene: {scene.name}, Channel: {channel}, File: {filepath}"
+                    
+                    found_sounds.append((unique_id, label, tooltip))
+            except Exception as e:
+                print(f"[LipKit] Error reading strip: {e}")
+    
+    # Also offer direct access to loaded sounds (as fallback)
+    for sound in bpy.data.sounds:
+        try:
+            filepath = bpy.path.abspath(sound.filepath)
+            if filepath:
+                sound_id = f"SOUND::{sound.name}"
+                label = f"[Sound] {sound.name}"
+                tooltip = f"Direct sound file: {filepath}"
+                # Only add if not already in VSE strips
+                if not any(s[0].endswith(f"::{sound.name}") for s in found_sounds):
+                    found_sounds.append((sound_id, label, tooltip))
+        except:
+            pass
+    
+    # Add all found sounds
+    items.extend(found_sounds)
     
     return items
 
@@ -242,6 +334,19 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
     phoneme_data_cached: BoolProperty(
         name="Phoneme Data Cached",
         description="Whether phoneme data has been extracted",
+        default=False
+    )
+    
+    # Store analyzed phoneme data as JSON
+    phoneme_data_json: StringProperty(
+        name="Phoneme Data JSON",
+        description="JSON string of analyzed phoneme data",
+        default=""
+    )
+    
+    has_phoneme_data: BoolProperty(
+        name="Has Phoneme Data",
+        description="Whether phoneme data exists and can be saved",
         default=False
     )
     

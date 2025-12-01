@@ -23,6 +23,43 @@ def get_cached_phoneme_data():
     return _phoneme_data_cache
 
 
+class LIPKIT_OT_refresh_vse_strips(bpy.types.Operator):
+    """Refresh the list of VSE sound strips"""
+    bl_idname = "lipkit.refresh_vse_strips"
+    bl_label = "Refresh VSE Strips"
+    bl_options = {'REGISTER'}
+    
+    def execute(self, context):
+        # Force Blender to re-evaluate the enum by toggling a dummy value
+        props = context.scene.lipkit
+        
+        # Count available sounds for reporting
+        sound_count = 0
+        direct_sounds = len(bpy.data.sounds)
+        
+        for scene in bpy.data.scenes:
+            seq = getattr(scene, 'sequence_editor', None)
+            if seq:
+                seqs = getattr(seq, 'sequences_all', None) or getattr(seq, 'sequences', [])
+                if seqs:
+                    for s in seqs:
+                        if getattr(s, 'type', '') == 'SOUND':
+                            sound_count += 1
+        
+        # Force UI redraw
+        for area in context.screen.areas:
+            area.tag_redraw()
+        
+        if sound_count > 0:
+            self.report({'INFO'}, f"Found {sound_count} VSE strips")
+        elif direct_sounds > 0:
+            self.report({'INFO'}, f"No VSE strips, but {direct_sounds} sounds in project")
+        else:
+            self.report({'WARNING'}, "No sounds found in project")
+        
+        return {'FINISHED'}
+
+
 class LIPKIT_OT_open_preferences(bpy.types.Operator):
     """Open LipKit preferences to configure tool path"""
     bl_idname = "lipkit.open_preferences"
@@ -280,6 +317,12 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                 global _phoneme_data_cache
                 _phoneme_data_cache = cached_data
                 props.phoneme_data_cached = True
+                
+                # Store JSON for save/load
+                import json
+                props.phoneme_data_json = json.dumps(cached_data.to_dict())
+                props.has_phoneme_data = True
+                
                 return {'FINISHED'}
         
         # Start analysis in background thread
@@ -312,6 +355,11 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                 global _phoneme_data_cache
                 _phoneme_data_cache = lipsync_data
                 props.phoneme_data_cached = True
+                
+                # Store JSON for save/load functionality
+                import json
+                props.phoneme_data_json = json.dumps(lipsync_data.to_dict())
+                props.has_phoneme_data = True
                 
                 print(f"✅ Audio Analyzed: {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)")
                 
@@ -706,14 +754,122 @@ class LIPKIT_OT_clear_animation(bpy.types.Operator):
             return {'CANCELLED'}
 
 
+class LIPKIT_OT_save_phoneme_data(bpy.types.Operator):
+    """Save analyzed phoneme data to a file"""
+    bl_idname = "lipkit.save_phoneme_data"
+    bl_label = "Save Phoneme Data"
+    bl_options = {'REGISTER'}
+    
+    filepath: bpy.props.StringProperty(
+        subtype='FILE_PATH',
+        default="phoneme_data.json"
+    )
+    
+    filter_glob: bpy.props.StringProperty(
+        default="*.json",
+        options={'HIDDEN'}
+    )
+    
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):
+        from ..utils import audio_utils
+        
+        props = context.scene.lipkit
+        
+        if not props.has_phoneme_data or not props.phoneme_data_json:
+            self.report({'ERROR'}, "No phoneme data to save. Analyze audio first.")
+            return {'CANCELLED'}
+        
+        try:
+            # Parse JSON and save to file
+            import json
+            from ..core import LipSyncData
+            
+            data_dict = json.loads(props.phoneme_data_json)
+            lipsync_data = LipSyncData.from_dict(data_dict)
+            
+            success, message = audio_utils.save_phoneme_data_to_file(
+                self.filepath,
+                lipsync_data
+            )
+            
+            if success:
+                self.report({'INFO'}, message)
+                return {'FINISHED'}
+            else:
+                self.report({'ERROR'}, message)
+                return {'CANCELLED'}
+        
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to save: {str(e)}")
+            return {'CANCELLED'}
+
+
+class LIPKIT_OT_load_phoneme_data(bpy.types.Operator):
+    """Load phoneme data from a file"""
+    bl_idname = "lipkit.load_phoneme_data"
+    bl_label = "Load Phoneme Data"
+    bl_options = {'REGISTER'}
+    
+    filepath: bpy.props.StringProperty(
+        subtype='FILE_PATH'
+    )
+    
+    filter_glob: bpy.props.StringProperty(
+        default="*.json",
+        options={'HIDDEN'}
+    )
+    
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):
+        from ..utils import audio_utils
+        import json
+        
+        props = context.scene.lipkit
+        
+        success, lipsync_data, message = audio_utils.load_phoneme_data_from_file(
+            self.filepath
+        )
+        
+        if not success:
+            self.report({'ERROR'}, message)
+            return {'CANCELLED'}
+        
+        try:
+            # Store in properties
+            props.phoneme_data_json = json.dumps(lipsync_data.to_dict())
+            props.has_phoneme_data = True
+            props.phoneme_data_cached = True
+            
+            # Also store in module cache so it can be used immediately
+            global _phoneme_data_cache
+            _phoneme_data_cache = lipsync_data
+            
+            self.report({'INFO'}, message)
+            return {'FINISHED'}
+        
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to load: {str(e)}")
+            return {'CANCELLED'}
+
+
 # Registration
 classes = [
+    LIPKIT_OT_refresh_vse_strips,
     LIPKIT_OT_open_preferences,
     LIPKIT_OT_download_rhubarb,
     LIPKIT_OT_select_rhubarb,
     LIPKIT_OT_select_rhubarb_manual,
     LIPKIT_OT_create_controller,
     LIPKIT_OT_analyze_audio,
+    LIPKIT_OT_save_phoneme_data,
+    LIPKIT_OT_load_phoneme_data,
     LIPKIT_OT_load_preset,
     LIPKIT_OT_auto_map_targets,
     LIPKIT_OT_select_mapping_target,
