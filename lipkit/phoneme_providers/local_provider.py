@@ -72,6 +72,7 @@ class LocalPhonemeProvider(PhonemeProvider):
         self, 
         audio_path: str, 
         language: str = "en",
+        progress_callback=None,
         **kwargs
     ) -> LipSyncData:
         """
@@ -80,6 +81,7 @@ class LocalPhonemeProvider(PhonemeProvider):
         Args:
             audio_path: Path to audio file (MP3, M4A, OGG, WAV, etc.)
             language: Language code (Rhubarb supports en, de, fr, pt)
+            progress_callback: Optional callback(message) for progress updates
             **kwargs: Additional options
         
         Raises:
@@ -127,7 +129,11 @@ class LocalPhonemeProvider(PhonemeProvider):
         
         # Run the extraction tool
         try:
-            result = self._run_rhubarb(wav_path, language)
+            if progress_callback:
+                progress_callback(0, "🎵 Processing audio file...")
+            result = self._run_rhubarb(wav_path, language, progress_callback)
+            if progress_callback:
+                progress_callback(100, "📊 Parsing results...")
             return self._parse_rhubarb_output(result, audio_path)
         except Exception as e:
             raise ExtractionError(f"Phoneme extraction failed: {str(e)}")
@@ -140,49 +146,124 @@ class LocalPhonemeProvider(PhonemeProvider):
                 except:
                     pass
     
-    def _run_rhubarb(self, audio_path: str, language: str) -> str:
-        """Run Rhubarb Lip Sync tool
+    def _run_rhubarb(self, audio_path: str, language: str, progress_callback=None) -> str:
+        """Run Rhubarb Lip Sync tool with real-time progress tracking
         
         Rhubarb command format:
         rhubarb [options] <input file>
         
+        Args:
+            audio_path: Path to audio file
+            language: Language code
+            progress_callback: Optional callback(percent, message) for progress updates
+        
         Returns JSON to stdout by default
         """
+        import threading
         
         cmd = [
             self.tool_path,
             "-f", "json",  # JSON output format
             "-r", "pocketSphinx",  # Recognizer (pocketSphinx is most accurate)
+            "--machineReadable",  # Enable machine-readable progress output!
             audio_path  # Input audio file
         ]
         
         print(f"🎤 Running Rhubarb: {' '.join(cmd)}")
+        if progress_callback:
+            progress_callback(0, "🎤 Starting Rhubarb analysis...")
         
         try:
-            result = subprocess.run(
+            # Use Popen for real-time output monitoring
+            process = subprocess.Popen(
                 cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=300,  # 5 minute timeout
-                check=False  # Don't raise on non-zero exit
+                bufsize=1  # Line buffered
             )
             
-            # Rhubarb sometimes prints warnings to stderr but still succeeds
-            if result.returncode != 0:
-                error_msg = result.stderr or result.stdout or "Unknown error"
+            # Monitor stderr in background thread for progress (Rhubarb outputs progress to stderr)
+            stderr_lines = []
+            last_percent = 0
+            
+            def monitor_stderr():
+                """Monitor Rhubarb stderr for machine-readable progress messages"""
+                nonlocal last_percent
+                try:
+                    for line in process.stderr:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        
+                        stderr_lines.append(line)
+                        
+                        # Try to parse machine-readable JSON output
+                        try:
+                            event = json.loads(line)
+                            event_type = event.get("type", "")
+                            
+                            if event_type == "progress":
+                                # value is 0.0 to 1.0
+                                value = event.get("value", 0)
+                                percent = int(value * 100)
+                                last_percent = percent
+                                if progress_callback:
+                                    progress_callback(percent, f"🔄 Processing: {percent}%")
+                                print(f"Rhubarb: {percent}%")
+                                
+                            elif event_type == "start":
+                                if progress_callback:
+                                    progress_callback(0, "📂 Loading audio file...")
+                                print("Rhubarb: Starting...")
+                                
+                            elif event_type == "failure":
+                                reason = event.get("reason", "Unknown error")
+                                print(f"Rhubarb ERROR: {reason}")
+                                
+                            elif event_type == "success":
+                                if progress_callback:
+                                    progress_callback(100, "✅ Analysis complete!")
+                                print("Rhubarb: Success!")
+                                
+                        except json.JSONDecodeError:
+                            # Not JSON, just log it
+                            print(f"Rhubarb: {line}")
+                            
+                except Exception as e:
+                    print(f"Rhubarb stderr monitor error: {e}")
+            
+            # Start stderr monitoring thread
+            stderr_thread = threading.Thread(target=monitor_stderr, daemon=True)
+            stderr_thread.start()
+            
+            # Read stdout (the JSON result)
+            stdout_data, _ = process.communicate(timeout=600)  # 10 minute timeout for large files
+            
+            # Wait for stderr thread to finish
+            stderr_thread.join(timeout=2)
+            
+            # Check result
+            if process.returncode != 0:
+                error_msg = '\n'.join(stderr_lines) or stdout_data or "Unknown error"
                 print(f"❌ Rhubarb error output:\n{error_msg}")
-                raise ExtractionError(f"Rhubarb failed with code {result.returncode}:\n{error_msg}")
+                raise ExtractionError(f"Rhubarb failed with code {process.returncode}:\n{error_msg}")
             
             # Check if we got JSON output
-            output = result.stdout.strip()
+            output = stdout_data.strip()
             if not output or not output.startswith('{'):
-                raise ExtractionError(f"Rhubarb didn't return JSON. Output:\n{output}\nStderr:\n{result.stderr}")
+                stderr_msg = '\n'.join(stderr_lines)
+                raise ExtractionError(f"Rhubarb didn't return JSON. Output:\n{output}\nStderr:\n{stderr_msg}")
             
             print(f"✅ Rhubarb succeeded - received {len(output)} bytes of JSON")
+            if progress_callback:
+                progress_callback(100, "✅ Rhubarb analysis complete")
+            
             return output
             
         except subprocess.TimeoutExpired:
-            raise ExtractionError("Rhubarb timed out after 5 minutes")
+            process.kill()
+            raise ExtractionError("Rhubarb timed out after 10 minutes")
     
     def _parse_rhubarb_output(self, output: str, audio_path: str) -> LipSyncData:
         """Parse Rhubarb JSON output into LipSyncData

@@ -23,10 +23,45 @@ def get_rhubarb_cache_dir() -> Path:
     return cache_dir
 
 
+def get_effective_rhubarb_path(props=None, prefs=None) -> Optional[str]:
+    """
+    Get the effective Rhubarb path from all possible sources.
+    
+    Priority:
+    1. Scene property (props.rhubarb_path)
+    2. Preferences manual path (prefs.local_tool_path)
+    3. Auto-downloaded (get_rhubarb_executable())
+    
+    Args:
+        props: Scene lipkit properties (optional)
+        prefs: Addon preferences (optional)
+    
+    Returns:
+        Path to rhubarb executable or None if not found anywhere
+    """
+    # Try scene-specific path first
+    if props and hasattr(props, 'rhubarb_path') and props.rhubarb_path:
+        if os.path.exists(props.rhubarb_path):
+            return props.rhubarb_path
+    
+    # Try preferences manual path
+    if prefs and hasattr(prefs, 'local_tool_path') and prefs.local_tool_path:
+        if os.path.exists(prefs.local_tool_path):
+            return prefs.local_tool_path
+    
+    # Try auto-downloaded
+    auto_path = get_rhubarb_executable()
+    if auto_path and os.path.exists(auto_path):
+        return auto_path
+    
+    return None
+
+
 def get_rhubarb_executable() -> Optional[str]:
     """
     Get path to Rhubarb executable if installed
     Searches recursively in cache directory
+    Also ensures the file has execute permissions on Unix systems.
     
     Returns:
         Path to rhubarb executable or None if not found
@@ -48,18 +83,33 @@ def get_rhubarb_executable() -> Optional[str]:
         cache_dir / exe_name,
     ]
     
+    exe_path = None
+    
     for path in standard_paths:
         if path.exists() and path.is_file():
-            return str(path)
+            exe_path = str(path)
+            break
     
     # Search recursively if not found in standard locations
-    for root, dirs, files in os.walk(cache_dir):
-        if exe_name in files:
-            exe_path = Path(root) / exe_name
-            if exe_path.is_file():
-                return str(exe_path)
+    if not exe_path:
+        for root, dirs, files in os.walk(cache_dir):
+            if exe_name in files:
+                found_path = Path(root) / exe_name
+                if found_path.is_file():
+                    exe_path = str(found_path)
+                    break
     
-    return None
+    # Ensure execute permissions on Unix
+    if exe_path and platform.system() != "Windows":
+        try:
+            current_mode = os.stat(exe_path).st_mode
+            if not (current_mode & 0o111):  # No execute bits set
+                print(f"🔧 Setting execute permissions on {exe_path}")
+                os.chmod(exe_path, current_mode | 0o755)
+        except Exception as e:
+            print(f"⚠️ Could not set execute permissions: {e}")
+    
+    return exe_path
 
 
 def get_latest_rhubarb_release() -> Optional[dict]:

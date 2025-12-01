@@ -284,13 +284,21 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
     bl_label = "Analyze Audio"
     bl_options = {'REGISTER'}
     
+    # Class-level state for tracking analysis
+    _timer = None
+    _thread = None
+    _result = None  # Will hold (success, data_or_error)
+    _progress_percent = 0
+    _progress_message = ""
+    _start_time = None
+    
     def execute(self, context):
         props = context.scene.lipkit
         prefs = get_preferences(context)
         
         # Prevent multiple simultaneous analyses
         if props.audio_analyzing:
-            self.report({'WARNING'}, "Audio analysis already in progress")
+            self.report({'WARNING'}, "⚠️ Analysis already in progress! Check System Console for progress.")
             return {'CANCELLED'}
         
         # Get audio path
@@ -322,55 +330,151 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
             props.has_phoneme_data = True
             return {'FINISHED'}
         
-        # Start analysis in background thread
+        # Reset class state
+        LIPKIT_OT_analyze_audio._result = None
+        LIPKIT_OT_analyze_audio._progress_percent = 0
+        LIPKIT_OT_analyze_audio._progress_message = "Starting..."
+        LIPKIT_OT_analyze_audio._start_time = None
+        
+        # Get Rhubarb path - try multiple sources
+        from .utils.rhubarb_manager import get_effective_rhubarb_path
+        
+        rhubarb_path = get_effective_rhubarb_path(props, prefs)
+        
+        if not rhubarb_path:
+            self.report({'ERROR'}, "Rhubarb not found! Go to Phoneme Engine panel and download or select it.")
+            return {'CANCELLED'}
+        
+        debug_mode = prefs.debug_mode
+        
         import threading
+        import time
+        
+        def progress_callback(percent, message):
+            """Thread-safe progress callback"""
+            LIPKIT_OT_analyze_audio._progress_percent = percent
+            LIPKIT_OT_analyze_audio._progress_message = message
+            print(f"[{percent:3d}%] {message}")
         
         def analyze_thread():
             """Background thread to extract phonemes"""
             try:
-                provider = LocalPhonemeProvider(tool_path=props.rhubarb_path)
+                LIPKIT_OT_analyze_audio._start_time = time.time()
+                
+                provider = LocalPhonemeProvider(tool_path=rhubarb_path)
                 
                 if not provider.is_available():
-                    print(f"❌ Rhubarb is not available at: {props.rhubarb_path}")
-                    props.audio_analyzing = False
+                    error = f"❌ Rhubarb not available at: {rhubarb_path}"
+                    print(error)
+                    LIPKIT_OT_analyze_audio._result = (False, error)
                     return
                 
-                print(f"📊 Extracting phonemes using Rhubarb...")
+                progress_callback(0, "📊 Starting phoneme extraction...")
                 
-                lipsync_data = provider.extract_phonemes(audio_path, language='en')
+                lipsync_data = provider.extract_phonemes(
+                    audio_path, 
+                    language='en',
+                    progress_callback=progress_callback
+                )
                 
-                # Save to .blend file storage
-                save_success, save_message = phoneme_storage.save_phoneme_data(audio_path, lipsync_data)
-                if save_success:
-                    print(f"✓ {save_message}")
+                elapsed = time.time() - LIPKIT_OT_analyze_audio._start_time
+                progress_callback(100, f"✅ Done in {elapsed:.1f}s - {len(lipsync_data.phonemes)} phonemes")
                 
-                # Store in module cache
-                global _phoneme_data_cache
-                _phoneme_data_cache = lipsync_data
-                props.phoneme_data_cached = True
-                props.has_phoneme_data = True
-                
-                print(f"✅ Audio Analyzed: {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)")
+                LIPKIT_OT_analyze_audio._result = (True, lipsync_data)
                 
             except Exception as e:
-                print(f"❌ Failed to analyze audio: {str(e)}")
-                if prefs.debug_mode:
+                error_msg = f"❌ Analysis failed: {str(e)}"
+                print(error_msg)
+                if debug_mode:
                     traceback.print_exc()
-                props.phoneme_data_cached = False
-            
-            finally:
-                props.audio_analyzing = False
+                LIPKIT_OT_analyze_audio._result = (False, error_msg)
         
         # Mark as analyzing
         props.audio_analyzing = True
         props.phoneme_data_cached = False
         
-        # Start thread
-        thread = threading.Thread(target=analyze_thread, daemon=True)
-        thread.start()
+        # Start background thread
+        LIPKIT_OT_analyze_audio._thread = threading.Thread(target=analyze_thread, daemon=True)
+        LIPKIT_OT_analyze_audio._thread.start()
         
-        self.report({'INFO'}, "⏳ Analyzing audio in background...")
-        return {'FINISHED'}
+        # Add timer to check thread status
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.2, window=context.window)  # Check more frequently
+        wm.modal_handler_add(self)
+        
+        self.report({'INFO'}, "⏳ Analyzing... Check System Console (Window → Toggle System Console) for progress")
+        return {'RUNNING_MODAL'}
+    
+    def modal(self, context, event):
+        if event.type != 'TIMER':
+            return {'PASS_THROUGH'}
+        
+        props = context.scene.lipkit
+        
+        # Force UI redraw to show progress
+        for area in context.screen.areas:
+            area.tag_redraw()
+        
+        # Check if thread is still running
+        if LIPKIT_OT_analyze_audio._thread and LIPKIT_OT_analyze_audio._thread.is_alive():
+            # Show progress in status bar
+            elapsed = 0
+            if LIPKIT_OT_analyze_audio._start_time:
+                import time
+                elapsed = time.time() - LIPKIT_OT_analyze_audio._start_time
+            
+            percent = LIPKIT_OT_analyze_audio._progress_percent
+            msg = LIPKIT_OT_analyze_audio._progress_message
+            
+            # Update status bar
+            context.workspace.status_text_set(f"⏳ Rhubarb [{percent}%] ({elapsed:.0f}s) - {msg}")
+            return {'PASS_THROUGH'}
+        
+        # Thread finished - clean up timer
+        wm = context.window_manager
+        wm.event_timer_remove(self._timer)
+        context.workspace.status_text_set(None)
+        
+        # Process result
+        props.audio_analyzing = False
+        
+        if LIPKIT_OT_analyze_audio._result is None:
+            self.report({'ERROR'}, "Analysis thread ended unexpectedly")
+            return {'CANCELLED'}
+        
+        success, data = LIPKIT_OT_analyze_audio._result
+        
+        if success:
+            # Save to .blend file storage
+            audio_path = None
+            if props.audio_source == 'FILE':
+                audio_path = bpy.path.abspath(props.audio_filepath)
+            elif props.audio_source == 'VSE':
+                if props.vse_strip != 'NONE':
+                    audio_path = audio_utils.get_audio_from_vse(props.vse_strip)
+            
+            if audio_path:
+                save_success, save_message = phoneme_storage.save_phoneme_data(audio_path, data)
+                if save_success:
+                    print(f"✓ {save_message}")
+            
+            # Store in module cache
+            global _phoneme_data_cache
+            _phoneme_data_cache = data
+            props.phoneme_data_cached = True
+            props.has_phoneme_data = True
+            
+            self.report({'INFO'}, f"✅ Analyzed: {len(data.phonemes)} phonemes ({data.duration:.1f}s)")
+            return {'FINISHED'}
+        else:
+            self.report({'ERROR'}, str(data))
+            return {'CANCELLED'}
+    
+    def cancel(self, context):
+        if self._timer:
+            wm = context.window_manager
+            wm.event_timer_remove(self._timer)
+        context.workspace.status_text_set(None)
     def _get_provider(self, props, prefs):
         """Get the appropriate phoneme provider"""
         # Always use LOCAL provider (Rhubarb)

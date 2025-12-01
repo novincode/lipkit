@@ -154,6 +154,7 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         props = context.scene.lipkit
         
         from .preferences import get_preferences, PreferencesDefaults
+        from .utils.rhubarb_manager import get_effective_rhubarb_path, get_rhubarb_executable
         prefs = get_preferences(context)
         
         layout.label(text="Rhubarb Setup", icon='TOOL_SETTINGS')
@@ -171,9 +172,11 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         else:
             mode = 'auto'
         
+        # Get the effective path (what will actually be used)
+        effective_path = get_effective_rhubarb_path(props, prefs)
+        
         if mode == 'auto':
             # Auto mode - download button
-            from .utils.rhubarb_manager import get_rhubarb_executable
             exe = get_rhubarb_executable()
             
             if props.rhubarb_downloading:
@@ -224,14 +227,44 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         row.scale_y = 1.5
         
         # Check if phoneme data is actually available in memory
-        from .operators import get_cached_phoneme_data
+        from .operators import get_cached_phoneme_data, LIPKIT_OT_analyze_audio
         cached_data = get_cached_phoneme_data()
         has_valid_data = cached_data is not None and props.phoneme_data_cached
         
         if props.audio_analyzing:
-            # Currently analyzing
+            # Currently analyzing - show progress
             row.enabled = False
-            row.operator("lipkit.analyze_audio", text="⏳ Analyzing...", icon='TIME')
+            
+            # Get elapsed time and progress
+            elapsed = 0
+            if LIPKIT_OT_analyze_audio._start_time:
+                import time
+                elapsed = time.time() - LIPKIT_OT_analyze_audio._start_time
+            
+            percent = LIPKIT_OT_analyze_audio._progress_percent
+            
+            row.operator("lipkit.analyze_audio", text=f"⏳ Analyzing [{percent}%] ({elapsed:.0f}s)", icon='TIME')
+            
+            # Progress box with actual percentage
+            progress_box = layout.box()
+            
+            # Progress bar using split
+            progress_row = progress_box.row()
+            progress_row.scale_y = 0.5
+            split = progress_row.split(factor=max(0.01, percent/100))
+            split.box()  # Filled portion
+            if percent < 100:
+                split.label(text="")  # Empty portion
+            
+            # Show message
+            msg = LIPKIT_OT_analyze_audio._progress_message
+            if msg:
+                progress_box.label(text=msg, icon='INFO')
+            
+            # Help text
+            help_row = progress_box.row()
+            help_row.scale_y = 0.7
+            help_row.label(text="See Console for details", icon='CONSOLE')
         elif has_valid_data:
             # Data available - can re-analyze
             row.operator("lipkit.analyze_audio", text="Re-Analyze Audio", icon='FILE_REFRESH')
