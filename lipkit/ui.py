@@ -223,7 +223,7 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         row = layout.row()
         row.scale_y = 1.5
         
-        # Check if phoneme data is actually available
+        # Check if phoneme data is actually available in memory
         from .operators import get_cached_phoneme_data
         cached_data = get_cached_phoneme_data()
         has_valid_data = cached_data is not None and props.phoneme_data_cached
@@ -236,32 +236,22 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
             # Data available - can re-analyze
             row.operator("lipkit.analyze_audio", text="Re-Analyze Audio", icon='FILE_REFRESH')
         else:
-            # No data - need to analyze
+            # No data - need to analyze (will auto-load if saved data exists)
             row.operator("lipkit.analyze_audio", text="Analyze Audio", icon='PLAY')
         
-        # Save/Load/Clear phoneme data buttons
+        # Status and management
         layout.separator()
         
-        # Show different buttons based on state
         if has_valid_data:
-            # We have data - show Save and Clear buttons
-            row = layout.row(align=True)
-            row.scale_y = 1.2
-            row.operator("lipkit.save_phoneme_data", text="💾 Save", icon='EXPORT')
-            row.operator("lipkit.clear_phoneme_data", text="🗑️ Clear", icon='TRASH')
-            
-            # Also show Load as secondary option
-            row = layout.row()
-            row.operator("lipkit.load_phoneme_data", text="📂 Load Different Data", icon='IMPORT')
-            
-            # Status
+            # Data is loaded in memory
             box = layout.box()
             box.label(text="✅ Phoneme data ready", icon='CHECKMARK')
-        else:
-            # No data - show Load button prominently
-            row = layout.row()
-            row.scale_y = 1.5
-            row.operator("lipkit.load_phoneme_data", text="📂 Load Phoneme Data", icon='IMPORT')
+            
+            # Clear and Delete buttons
+            row = layout.row(align=True)
+            row.scale_y = 1.1
+            row.operator("lipkit.clear_phoneme_data", text="Clear", icon='X')
+            row.operator("lipkit.delete_phoneme_data", text="Delete from File", icon='TRASH')
 
 
 class LIPKIT_PT_visual_system(bpy.types.Panel):

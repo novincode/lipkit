@@ -11,6 +11,7 @@ from .core.animation_engine import AnimationEngine
 from .core.mapping import PhonemeMapping, PresetManager
 from .phoneme_providers import LocalPhonemeProvider, APIPhonemeProvider, CustomAPIProvider
 from .utils import audio_utils
+from .utils import phoneme_storage
 from .preferences import get_preferences
 
 # Module-level cache for phoneme data (survives scene changes)
@@ -310,26 +311,16 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
             self.report({'ERROR'}, error_msg)
             return {'CANCELLED'}
         
-        # Check cache first
-        if prefs.use_cache:
-            cached_data = audio_utils.load_from_cache(
-                audio_path,
-                'en',
-                'LOCAL'
-            )
-            
-            if cached_data:
-                self.report({'INFO'}, "✓ Loaded phoneme data from cache")
-                global _phoneme_data_cache
-                _phoneme_data_cache = cached_data
-                props.phoneme_data_cached = True
-                
-                # Store JSON for save/load
-                import json
-                props.phoneme_data_json = json.dumps(cached_data.to_dict())
-                props.has_phoneme_data = True
-                
-                return {'FINISHED'}
+        # Check if phoneme data already exists in .blend file
+        success, cached_data, message = phoneme_storage.load_phoneme_data(audio_path)
+        
+        if success and cached_data:
+            self.report({'INFO'}, message)
+            global _phoneme_data_cache
+            _phoneme_data_cache = cached_data
+            props.phoneme_data_cached = True
+            props.has_phoneme_data = True
+            return {'FINISHED'}
         
         # Start analysis in background thread
         import threading
@@ -348,23 +339,15 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                 
                 lipsync_data = provider.extract_phonemes(audio_path, language='en')
                 
-                # Cache result
-                if prefs.use_cache:
-                    audio_utils.save_to_cache(
-                        audio_path,
-                        'en',
-                        'LOCAL',
-                        lipsync_data
-                    )
+                # Save to .blend file storage
+                save_success, save_message = phoneme_storage.save_phoneme_data(audio_path, lipsync_data)
+                if save_success:
+                    print(f"✓ {save_message}")
                 
                 # Store in module cache
                 global _phoneme_data_cache
                 _phoneme_data_cache = lipsync_data
                 props.phoneme_data_cached = True
-                
-                # Store JSON for save/load functionality
-                import json
-                props.phoneme_data_json = json.dumps(lipsync_data.to_dict())
                 props.has_phoneme_data = True
                 
                 print(f"✅ Audio Analyzed: {len(lipsync_data.phonemes)} phonemes ({lipsync_data.duration:.1f}s)")
@@ -886,6 +869,43 @@ class LIPKIT_OT_clear_phoneme_data(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class LIPKIT_OT_delete_phoneme_data(bpy.types.Operator):
+    """Delete saved phoneme data for current audio from the .blend file"""
+    bl_idname = "lipkit.delete_phoneme_data"
+    bl_label = "Delete Saved Data"
+    bl_options = {'REGISTER'}
+    
+    def execute(self, context):
+        props = context.scene.lipkit
+        
+        # Get audio path
+        audio_path = None
+        if props.audio_source == 'FILE':
+            audio_path = bpy.path.abspath(props.audio_filepath)
+        elif props.audio_source == 'VSE':
+            if props.vse_strip != 'NONE':
+                audio_path = audio_utils.get_audio_from_vse(props.vse_strip)
+        
+        if not audio_path:
+            self.report({'ERROR'}, "No audio file selected")
+            return {'CANCELLED'}
+        
+        # Delete from storage
+        success, message = phoneme_storage.delete_phoneme_data(audio_path)
+        
+        if success:
+            # Also clear from memory
+            props.phoneme_data_cached = False
+            props.has_phoneme_data = False
+            clear_cached_phoneme_data()
+            
+            self.report({'INFO'}, message)
+        else:
+            self.report({'WARNING'}, message)
+        
+        return {'FINISHED'}
+
+
 # Registration
 classes = [
     LIPKIT_OT_refresh_vse_strips,
@@ -895,9 +915,8 @@ classes = [
     LIPKIT_OT_select_rhubarb_manual,
     LIPKIT_OT_create_controller,
     LIPKIT_OT_analyze_audio,
-    LIPKIT_OT_save_phoneme_data,
-    LIPKIT_OT_load_phoneme_data,
     LIPKIT_OT_clear_phoneme_data,
+    LIPKIT_OT_delete_phoneme_data,
     LIPKIT_OT_load_preset,
     LIPKIT_OT_auto_map_targets,
     LIPKIT_OT_select_mapping_target,
