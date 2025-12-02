@@ -758,7 +758,9 @@ class LIPKIT_OT_generate(bpy.types.Operator):
                 start_frame=props.start_frame,
                 use_nla=props.use_nla,
                 action_name=props.action_name,
-                interpolation=props.interpolation
+                interpolation=props.interpolation,
+                min_hold_frames=props.min_hold_frames,
+                merge_threshold=props.merge_threshold
             )
             
             # Report results

@@ -45,7 +45,9 @@ class AnimationEngine:
         fps: Optional[float] = None,
         use_nla: bool = False,
         action_name: str = "LipSync",
-        interpolation: str = 'LINEAR'
+        interpolation: str = 'LINEAR',
+        min_hold_frames: int = 0,
+        merge_threshold: float = 0.0
     ) -> Dict[str, any]:
         """
         Generate lip sync animation using controller + drivers
@@ -57,6 +59,8 @@ class AnimationEngine:
             use_nla: Whether to create NLA strip instead of direct keyframes
             action_name: Name for the action/NLA strip
             interpolation: Keyframe interpolation mode ('CONSTANT', 'LINEAR', 'BEZIER')
+            min_hold_frames: Minimum frames each mouth shape must hold (reduces jitter)
+            merge_threshold: Merge phonemes closer than this many seconds
             
         Returns:
             Dictionary with generation results and statistics
@@ -67,15 +71,26 @@ class AnimationEngine:
         # Step 1: Build phoneme-to-index mapping
         phoneme_to_index = self._build_phoneme_index_map()
         
-        # Step 2: Generate keyframes on controller
+        # Step 2: Pre-process phonemes (merge close ones, apply min hold)
+        processed_phonemes = self._preprocess_phonemes(
+            self.lipsync_data.phonemes,
+            merge_threshold=merge_threshold,
+            min_hold_seconds=min_hold_frames / fps if min_hold_frames > 0 else 0
+        )
+        
+        # Step 3: Generate keyframes on controller
         frame_data = {}
-        for phoneme_data in self.lipsync_data.phonemes:
+        for phoneme_data in processed_phonemes:
             frame = start_frame + audio_utils.time_to_frame(phoneme_data.start_time, fps)
             phoneme = phoneme_data.phoneme
             
             # Get index for this phoneme
             index = phoneme_to_index.get(phoneme, 0)
             frame_data[frame] = index
+        
+        # Apply minimum hold frames (ensure no two keyframes are too close)
+        if min_hold_frames > 0:
+            frame_data = self._apply_min_hold_frames(frame_data, min_hold_frames)
         
         # Create action with keyframes
         if use_nla:
@@ -136,6 +151,100 @@ class AnimationEngine:
                 phoneme_to_index[phoneme] = index
         
         return phoneme_to_index
+    
+    def _preprocess_phonemes(
+        self,
+        phonemes: List[PhonemeData],
+        merge_threshold: float = 0.0,
+        min_hold_seconds: float = 0.0
+    ) -> List[PhonemeData]:
+        """
+        Preprocess phonemes to reduce jitter and improve animation quality.
+        
+        Args:
+            phonemes: Original phoneme list
+            merge_threshold: Merge phonemes closer than this (seconds)
+            min_hold_seconds: Minimum duration for each phoneme (seconds)
+            
+        Returns:
+            Processed phoneme list
+        """
+        if not phonemes:
+            return phonemes
+        
+        processed = list(phonemes)  # Copy
+        
+        # Step 1: Merge very close phonemes (keep the first one)
+        if merge_threshold > 0:
+            merged = [processed[0]]
+            for phoneme in processed[1:]:
+                last = merged[-1]
+                time_diff = phoneme.start_time - last.start_time
+                
+                if time_diff < merge_threshold:
+                    # Skip this phoneme (too close to previous)
+                    # But extend the previous one's end time if needed
+                    continue
+                else:
+                    merged.append(phoneme)
+            
+            processed = merged
+            print(f"📊 Merged {len(phonemes) - len(processed)} close phonemes (threshold: {merge_threshold:.3f}s)")
+        
+        # Step 2: Extend short phonemes to minimum duration
+        if min_hold_seconds > 0:
+            for i, phoneme in enumerate(processed):
+                duration = phoneme.end_time - phoneme.start_time
+                if duration < min_hold_seconds:
+                    # Extend end time (but don't overlap with next phoneme)
+                    new_end = phoneme.start_time + min_hold_seconds
+                    if i + 1 < len(processed):
+                        next_start = processed[i + 1].start_time
+                        new_end = min(new_end, next_start)
+                    
+                    # Create new phoneme with extended duration
+                    processed[i] = PhonemeData(
+                        phoneme=phoneme.phoneme,
+                        start_time=phoneme.start_time,
+                        end_time=new_end,
+                        confidence=phoneme.confidence
+                    )
+        
+        return processed
+    
+    def _apply_min_hold_frames(
+        self,
+        frame_data: Dict[int, int],
+        min_hold_frames: int
+    ) -> Dict[int, int]:
+        """
+        Ensure no two keyframes are closer than min_hold_frames apart.
+        Removes keyframes that are too close together (keeps the first).
+        
+        Args:
+            frame_data: Original frame -> index mapping
+            min_hold_frames: Minimum frames between keyframes
+            
+        Returns:
+            Filtered frame data
+        """
+        if min_hold_frames <= 0:
+            return frame_data
+        
+        sorted_frames = sorted(frame_data.keys())
+        filtered = {}
+        last_frame = -min_hold_frames  # Ensure first keyframe is always included
+        
+        for frame in sorted_frames:
+            if frame - last_frame >= min_hold_frames:
+                filtered[frame] = frame_data[frame]
+                last_frame = frame
+        
+        removed = len(frame_data) - len(filtered)
+        if removed > 0:
+            print(f"📊 Removed {removed} keyframes (min hold: {min_hold_frames} frames)")
+        
+        return filtered
     
     def _create_drivers(
         self,

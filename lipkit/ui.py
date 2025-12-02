@@ -459,6 +459,24 @@ class LIPKIT_PT_generate(bpy.types.Panel):
         
         layout.separator()
         
+        # Timing adjustments (to reduce jitter)
+        box = layout.box()
+        box.label(text="Timing Adjustments", icon='MOD_TIME')
+        col = box.column(align=True)
+        col.prop(props, "min_hold_frames")
+        col.prop(props, "merge_threshold")
+        
+        # Help text
+        if props.min_hold_frames > 0 or props.merge_threshold > 0:
+            help_box = box.box()
+            help_box.scale_y = 0.7
+            if props.min_hold_frames > 0:
+                help_box.label(text=f"Each shape holds ≥{props.min_hold_frames} frames", icon='INFO')
+            if props.merge_threshold > 0:
+                help_box.label(text=f"Merging shapes <{props.merge_threshold*1000:.0f}ms apart", icon='INFO')
+        
+        layout.separator()
+        
         # Generate button - ALWAYS visible
         col = layout.column()
         col.scale_y = 2.0

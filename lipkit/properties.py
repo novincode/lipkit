@@ -362,6 +362,25 @@ class LipKitSceneProperties(bpy.types.PropertyGroup):
         default='CONSTANT'
     )
     
+    # Timing adjustments
+    min_hold_frames: IntProperty(
+        name="Min Hold Frames",
+        description="Minimum frames each mouth shape must hold. Increase to reduce jittery rapid changes (0 = no minimum)",
+        default=2,
+        min=0,
+        max=24
+    )
+    
+    merge_threshold: FloatProperty(
+        name="Merge Threshold",
+        description="Merge phonemes closer than this many seconds (0 = no merging)",
+        default=0.04,
+        min=0.0,
+        max=0.2,
+        step=1,
+        precision=3
+    )
+    
     # State
     phoneme_data_cached: BoolProperty(
         name="Phoneme Data Cached",
