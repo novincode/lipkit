@@ -186,6 +186,7 @@ class LocalPhonemeProvider(PhonemeProvider):
             # Monitor stderr in background thread for progress (Rhubarb outputs progress to stderr)
             stderr_lines = []
             last_percent = 0
+            stderr_done = threading.Event()
             
             def monitor_stderr():
                 """Monitor Rhubarb stderr for machine-readable progress messages"""
@@ -232,16 +233,30 @@ class LocalPhonemeProvider(PhonemeProvider):
                             
                 except Exception as e:
                     print(f"Rhubarb stderr monitor error: {e}")
+                finally:
+                    stderr_done.set()
             
             # Start stderr monitoring thread
             stderr_thread = threading.Thread(target=monitor_stderr, daemon=True)
             stderr_thread.start()
             
-            # Read stdout (the JSON result)
-            stdout_data, _ = process.communicate(timeout=600)  # 10 minute timeout for large files
+            # Read stdout (the JSON result) - with timeout
+            print("Rhubarb: Waiting for stdout...")
+            stdout_data = ""
+            try:
+                stdout_data, _ = process.communicate(timeout=600)  # 10 minute timeout
+                print(f"Rhubarb: communicate() returned, stdout length: {len(stdout_data)}")
+            except subprocess.TimeoutExpired:
+                print("Rhubarb: TIMEOUT! Killing process...")
+                process.kill()
+                stdout_data, _ = process.communicate()
+                raise ExtractionError("Rhubarb timed out after 10 minutes")
             
-            # Wait for stderr thread to finish
+            # Wait for stderr thread to finish (with timeout!)
+            print("Rhubarb: Waiting for stderr thread...")
+            stderr_done.wait(timeout=5)
             stderr_thread.join(timeout=2)
+            print("Rhubarb: stderr thread done")
             
             # Check result
             if process.returncode != 0:

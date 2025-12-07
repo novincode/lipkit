@@ -12,10 +12,31 @@ from ..core import LipSyncData
 
 
 def get_audio_hash(audio_path: str) -> str:
-    """Get MD5 hash of audio file content"""
+    """Get hash of audio file using file metadata + partial content
+    
+    Instead of reading the entire file (which can be slow for large files),
+    we hash: file size + first 64KB + last 64KB + filename
+    This is fast and still unique enough for our purposes.
+    """
     try:
+        import os
+        file_size = os.path.getsize(audio_path)
+        filename = os.path.basename(audio_path)
+        
+        # Create hash from metadata and partial content
+        hasher = hashlib.md5()
+        hasher.update(f"{file_size}:{filename}:".encode())
+        
         with open(audio_path, 'rb') as f:
-            return hashlib.md5(f.read()).hexdigest()
+            # Read first 64KB
+            hasher.update(f.read(65536))
+            
+            # Read last 64KB if file is larger
+            if file_size > 131072:  # 128KB
+                f.seek(-65536, 2)  # Seek from end
+                hasher.update(f.read(65536))
+        
+        return hasher.hexdigest()
     except Exception as e:
         print(f"[LipKit] Failed to hash audio: {e}")
         return ""

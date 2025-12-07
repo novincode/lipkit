@@ -441,8 +441,14 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
             self.report({'WARNING'}, "Analysis cancelled by user")
             LIPKIT_OT_analyze_audio._cancelled = True
             props.audio_analyzing = False
+            # Reset state
+            LIPKIT_OT_analyze_audio._progress_percent = 0
+            LIPKIT_OT_analyze_audio._progress_message = ""
+            LIPKIT_OT_analyze_audio._start_time = None
+            LIPKIT_OT_analyze_audio._thread = None
             wm = context.window_manager
-            wm.event_timer_remove(self._timer)
+            if self._timer:
+                wm.event_timer_remove(self._timer)
             context.workspace.status_text_set(None)
             return {'CANCELLED'}
         
@@ -453,61 +459,82 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
         for area in context.screen.areas:
             area.tag_redraw()
         
-        # Check if thread is still running
-        if LIPKIT_OT_analyze_audio._thread and LIPKIT_OT_analyze_audio._thread.is_alive():
-            # Show progress in status bar
-            elapsed = 0
-            if LIPKIT_OT_analyze_audio._start_time:
-                import time
-                elapsed = time.time() - LIPKIT_OT_analyze_audio._start_time
-            
-            percent = LIPKIT_OT_analyze_audio._progress_percent
-            msg = LIPKIT_OT_analyze_audio._progress_message
-            
-            # Timeout after 15 minutes
-            if elapsed > 900:
-                self.report({'ERROR'}, "Analysis timed out after 15 minutes")
-                props.audio_analyzing = False
-                # Reset state
-                LIPKIT_OT_analyze_audio._progress_percent = 0
-                LIPKIT_OT_analyze_audio._progress_message = ""
-                LIPKIT_OT_analyze_audio._start_time = None
-                wm = context.window_manager
+        # IMPORTANT: Check if result is already available (thread finished)
+        # This is the PRIMARY check - if result is set, thread is done
+        if LIPKIT_OT_analyze_audio._result is not None:
+            print(f"LipKit: Result is ready, processing... (result type: {type(LIPKIT_OT_analyze_audio._result)})")
+            # Thread finished - clean up and process
+            wm = context.window_manager
+            if self._timer:
                 wm.event_timer_remove(self._timer)
-                context.workspace.status_text_set(None)
-                return {'CANCELLED'}
-            
-            # Update status bar
-            context.workspace.status_text_set(f"⏳ Rhubarb [{percent}%] ({elapsed:.0f}s) - {msg} (ESC to cancel)")
-            return {'PASS_THROUGH'}
+            context.workspace.status_text_set(None)
+            return self._process_result(context)
         
-        # Thread finished - clean up timer
-        print("LipKit: Thread completed, processing result...")
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
-        context.workspace.status_text_set(None)
+        # Secondary check: thread state
+        thread = LIPKIT_OT_analyze_audio._thread
+        thread_alive = thread is not None and thread.is_alive()
         
-        # Process result
+        if not thread_alive and LIPKIT_OT_analyze_audio._result is None:
+            # Thread died without setting result - this is an error
+            print("LipKit ERROR: Thread died without setting result!")
+            wm = context.window_manager
+            if self._timer:
+                wm.event_timer_remove(self._timer)
+            context.workspace.status_text_set(None)
+            props.audio_analyzing = False
+            LIPKIT_OT_analyze_audio._progress_percent = 0
+            LIPKIT_OT_analyze_audio._progress_message = ""
+            LIPKIT_OT_analyze_audio._start_time = None
+            LIPKIT_OT_analyze_audio._thread = None
+            self.report({'ERROR'}, "Analysis failed unexpectedly - check System Console")
+            return {'CANCELLED'}
+        
+        # Thread still running - show progress
+        elapsed = 0
+        if LIPKIT_OT_analyze_audio._start_time:
+            import time
+            elapsed = time.time() - LIPKIT_OT_analyze_audio._start_time
+        
+        percent = LIPKIT_OT_analyze_audio._progress_percent
+        msg = LIPKIT_OT_analyze_audio._progress_message
+        
+        # Timeout after 15 minutes
+        if elapsed > 900:
+            self.report({'ERROR'}, "Analysis timed out after 15 minutes")
+            props.audio_analyzing = False
+            # Reset state
+            LIPKIT_OT_analyze_audio._progress_percent = 0
+            LIPKIT_OT_analyze_audio._progress_message = ""
+            LIPKIT_OT_analyze_audio._start_time = None
+            LIPKIT_OT_analyze_audio._thread = None
+            wm = context.window_manager
+            if self._timer:
+                wm.event_timer_remove(self._timer)
+            context.workspace.status_text_set(None)
+            return {'CANCELLED'}
+        
+        # Update status bar
+        context.workspace.status_text_set(f"⏳ Rhubarb [{percent}%] ({elapsed:.0f}s) - {msg} (ESC to cancel)")
+        return {'PASS_THROUGH'}
+    
+    def _process_result(self, context):
+        """Process the analysis result - called when thread completes"""
+        props = context.scene.lipkit
         props.audio_analyzing = False
         
         # Check if cancelled
         if LIPKIT_OT_analyze_audio._cancelled:
             self.report({'WARNING'}, "Analysis cancelled")
-            # Reset state
-            LIPKIT_OT_analyze_audio._progress_percent = 0
-            LIPKIT_OT_analyze_audio._progress_message = ""
-            LIPKIT_OT_analyze_audio._start_time = None
+            self._reset_state()
             return {'CANCELLED'}
         
-        if LIPKIT_OT_analyze_audio._result is None:
+        result = LIPKIT_OT_analyze_audio._result
+        if result is None:
             self.report({'ERROR'}, "Analysis thread ended unexpectedly - check System Console for errors")
-            # Reset state on failure
-            LIPKIT_OT_analyze_audio._progress_percent = 0
-            LIPKIT_OT_analyze_audio._progress_message = ""
-            LIPKIT_OT_analyze_audio._start_time = None
+            self._reset_state()
             return {'CANCELLED'}
         
-        success, data = LIPKIT_OT_analyze_audio._result
+        success, data = result
         
         if success:
             # Save to .blend file storage
@@ -519,11 +546,14 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
                     audio_path = audio_utils.get_audio_from_vse(props.vse_strip)
             
             if audio_path:
-                save_success, save_message = phoneme_storage.save_phoneme_data(audio_path, data)
-                if save_success:
-                    print(f"✓ {save_message}")
-                else:
-                    print(f"⚠ Failed to save: {save_message}")
+                try:
+                    save_success, save_message = phoneme_storage.save_phoneme_data(audio_path, data)
+                    if save_success:
+                        print(f"✓ {save_message}")
+                    else:
+                        print(f"⚠ Failed to save: {save_message}")
+                except Exception as e:
+                    print(f"⚠ Exception saving phoneme data: {e}")
             
             # Store in module cache
             global _phoneme_data_cache
@@ -531,30 +561,39 @@ class LIPKIT_OT_analyze_audio(bpy.types.Operator):
             props.phoneme_data_cached = True
             props.has_phoneme_data = True
             
-            # Reset progress state on success
-            LIPKIT_OT_analyze_audio._progress_percent = 0
-            LIPKIT_OT_analyze_audio._progress_message = ""
-            LIPKIT_OT_analyze_audio._start_time = None
-            
+            self._reset_state()
             self.report({'INFO'}, f"✅ Analyzed: {len(data.phonemes)} phonemes ({data.duration:.1f}s)")
             return {'FINISHED'}
         else:
-            # Reset state on failure
-            LIPKIT_OT_analyze_audio._progress_percent = 0
-            LIPKIT_OT_analyze_audio._progress_message = ""
-            LIPKIT_OT_analyze_audio._start_time = None
-            
+            self._reset_state()
             self.report({'ERROR'}, str(data))
             return {'CANCELLED'}
+    
+    def _reset_state(self):
+        """Reset all class-level state"""
+        LIPKIT_OT_analyze_audio._progress_percent = 0
+        LIPKIT_OT_analyze_audio._progress_message = ""
+        LIPKIT_OT_analyze_audio._start_time = None
+        LIPKIT_OT_analyze_audio._result = None
+        LIPKIT_OT_analyze_audio._thread = None
+        LIPKIT_OT_analyze_audio._cancelled = False
     
     def cancel(self, context):
         """Handle operator cancellation"""
         LIPKIT_OT_analyze_audio._cancelled = True
         context.scene.lipkit.audio_analyzing = False
         if self._timer:
-            wm = context.window_manager
-            wm.event_timer_remove(self._timer)
-        context.workspace.status_text_set(None)
+            try:
+                wm = context.window_manager
+                wm.event_timer_remove(self._timer)
+            except:
+                pass
+        try:
+            context.workspace.status_text_set(None)
+        except:
+            pass
+        # Full reset
+        self._reset_state()
 
 
 class LIPKIT_OT_cancel_analysis(bpy.types.Operator):
@@ -572,10 +611,12 @@ class LIPKIT_OT_cancel_analysis(bpy.types.Operator):
         # Reset state immediately
         props.audio_analyzing = False
         
-        # Reset class state
+        # Full reset of class state
         LIPKIT_OT_analyze_audio._progress_percent = 0
         LIPKIT_OT_analyze_audio._progress_message = ""
         LIPKIT_OT_analyze_audio._start_time = None
+        LIPKIT_OT_analyze_audio._result = None
+        LIPKIT_OT_analyze_audio._thread = None
         
         self.report({'WARNING'}, "❌ Analysis cancelled")
         return {'FINISHED'}
