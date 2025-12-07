@@ -232,7 +232,7 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
         has_valid_data = cached_data is not None and props.phoneme_data_cached
         
         if props.audio_analyzing:
-            # Currently analyzing - show progress
+            # Currently analyzing - show progress AND CANCEL BUTTON
             row.enabled = False
             
             # Get elapsed time and progress
@@ -261,10 +261,16 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
             if msg:
                 progress_box.label(text=msg, icon='INFO')
             
-            # Help text
+            # BIG CANCEL BUTTON
+            cancel_row = progress_box.row()
+            cancel_row.scale_y = 1.5
+            cancel_op = cancel_row.operator("lipkit.cancel_analysis", text="❌ CANCEL ANALYSIS", icon='CANCEL')
+            
+            # Also show ESC hint
             help_row = progress_box.row()
             help_row.scale_y = 0.7
-            help_row.label(text="See Console for details", icon='CONSOLE')
+            help_row.label(text="(or press ESC key)", icon='EVENT_ESC')
+            
         elif has_valid_data:
             # Data available - can re-analyze
             row.operator("lipkit.analyze_audio", text="Re-Analyze Audio", icon='FILE_REFRESH')
@@ -283,34 +289,44 @@ class LIPKIT_PT_phoneme_engine(bpy.types.Panel):
             # Clear and Delete buttons
             row = layout.row(align=True)
             row.scale_y = 1.1
-            row.operator("lipkit.clear_phoneme_data", text="Clear", icon='X')
+            row.operator("lipkit.clear_phoneme_data", text="Clear from Memory", icon='X')
             row.operator("lipkit.delete_phoneme_data", text="Delete from File", icon='TRASH')
 
 
 class LIPKIT_PT_visual_system(bpy.types.Panel):
-    """Visual system panel"""
+    """Visual system panel - auto-detected from target object"""
     bl_label = "Visual System"
     bl_idname = "LIPKIT_PT_visual_system"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "LipKit"
     bl_parent_id = "LIPKIT_PT_main"
+    bl_options = {'DEFAULT_CLOSED'}
     
     def draw(self, context):
         layout = self.layout
         props = context.scene.lipkit
         
-        # Just show visual system type
-        layout.prop(props, "visual_system", text="Type")
+        # Auto-detect from target object
+        from .properties import detect_visual_system
         
-        # Info about what this means
+        detected_system = 'gp_layer'
+        if props.target_object:
+            detected_system = detect_visual_system(props.target_object)
+            # Auto-update the property
+            if props.visual_system != detected_system:
+                props.visual_system = detected_system
+        
+        # Show detected type (read-only info)
         box = layout.box()
-        if props.visual_system == 'gp_layer':
-            box.label(text="Uses Grease Pencil layer opacity", icon='GREASEPENCIL')
-        elif props.visual_system == 'shape_key':
-            box.label(text="Uses 3D mesh shape keys", icon='SHAPEKEY_DATA')
+        box.label(text="Auto-detected from Mouth Object:", icon='INFO')
+        
+        if detected_system == 'gp_layer':
+            box.label(text="✓ Grease Pencil Layers", icon='GREASEPENCIL')
+        elif detected_system == 'shape_key':
+            box.label(text="✓ 3D Shape Keys", icon='SHAPEKEY_DATA')
         else:
-            box.label(text="Uses image/texture switching", icon='IMAGE_DATA')
+            box.label(text="✓ Image Sequence", icon='IMAGE_DATA')
 
 
 class LIPKIT_PT_mapping(bpy.types.Panel):

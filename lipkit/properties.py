@@ -14,6 +14,32 @@ from bpy.props import (
 )
 
 
+def detect_visual_system(obj: bpy.types.Object) -> str:
+    """
+    Auto-detect visual system type from object
+    
+    Args:
+        obj: Blender object
+        
+    Returns:
+        'gp_layer', 'shape_key', or 'image_sequence'
+    """
+    if not obj:
+        return 'gp_layer'  # Default
+    
+    # Check if it's a Grease Pencil object (Blender 4.x and 5.x)
+    if obj.type in ('GPENCIL', 'GREASEPENCIL'):
+        return 'gp_layer'
+    
+    # Check if it has shape keys
+    if obj.type == 'MESH':
+        if hasattr(obj.data, 'shape_keys') and obj.data.shape_keys:
+            return 'shape_key'
+    
+    # Default fallback
+    return 'gp_layer'
+
+
 def get_all_scenes_with_sequencer():
     """Get all scenes that might have a sequencer, Blender 4.x and 5.x compatible"""
     scenes = set()
