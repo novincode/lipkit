@@ -2,8 +2,8 @@
 """
 Build script for LipKit
 Creates: 
-  1. lipkit_v0.1.0_[date].zip - The plugin itself
-  2. LipKit_v0.1.0_[date].zip - Gumroad package (plugin + instructions + license)
+  1. lipkit_v1.1.0_[date].zip - The plugin itself
+  2. LipKit_v1.1.0_[date].zip - Gumroad package (plugin + instructions + license)
 """
 import os
 import zipfile
@@ -19,10 +19,10 @@ DIST_DIR = BUILD_DIR / "dist"
 STAGING_DIR = BUILD_DIR / "staging"
 
 def create_plugin_zip():
-    """Create lipkit_v0.1.0_[date].zip - the raw plugin"""
+    """Create lipkit_v1.1.0_[date].zip - the raw plugin"""
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    zip_name = f"lipkit_v0.1.0_{timestamp}.zip"
+    zip_name = f"lipkit_v1.1.0_{timestamp}.zip"
     zip_path = DIST_DIR / zip_name
     
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
