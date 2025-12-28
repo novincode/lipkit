@@ -37,21 +37,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cat > /tmp/release_notes.md << 'EOF'
+          # LipKit v${{ steps.version.outputs.VERSION }}
+          
+          Automatic lip sync for Blender 🎬
+          
+          ## Installation
+          1. Download the `lipkit_*.zip` file below
+          2. Open Blender 4.2+
+          3. Go to **Edit → Preferences → Get Extensions → Install from Disk**
+          4. Select the downloaded ZIP file
+          5. Enable **LipKit** in the Extensions list
+          
+          ## Quick Start
+          - Press **N** to open the LipKit panel
+          - Download Rhubarb (automatic or manual)
+          - Load your audio and generate lip sync!
+          EOF
+          
           gh release create ${{ github.ref_name }} \
             --title "LipKit v${{ steps.version.outputs.VERSION }}" \
-            --notes "# LipKit v${{ steps.version.outputs.VERSION }}
-
-Automatic lip sync for Blender 🎬
-
-## Installation
-1. Download the \`lipkit_*.zip\` file below
-2. Open Blender 4.2+
-3. Go to **Edit → Preferences → Get Extensions → Install from Disk**
-4. Select the downloaded ZIP file
-5. Enable **LipKit** in the Extensions list
-
-## Quick Start
-- Press **N** to open the LipKit panel
-- Download Rhubarb (automatic or manual)
-- Load your audio and generate lip sync!" \
+            --notes-file /tmp/release_notes.md \
             "${{ steps.zip.outputs.ZIP_PATH }}"
