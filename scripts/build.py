@@ -2,8 +2,8 @@
 """
 Build script for LipKit
 Creates: 
-  1. lipkit_v1.1.0_[date].zip - The plugin itself
-  2. LipKit_v1.1.0_[date].zip - Gumroad package (plugin + instructions + license)
+  1. lipkit.zip - The plugin itself (predictable name)
+  2. lipkit-release.zip - Full release with README + LICENSE (predictable name)
 """
 import os
 import zipfile
@@ -19,10 +19,9 @@ DIST_DIR = BUILD_DIR / "dist"
 STAGING_DIR = BUILD_DIR / "staging"
 
 def create_plugin_zip():
-    """Create lipkit_v1.1.0_[date].zip - the raw plugin"""
+    """Create lipkit.zip - the raw plugin"""
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    zip_name = f"lipkit_v1.1.0_{timestamp}.zip"
+    zip_name = "lipkit.zip"
     zip_path = DIST_DIR / zip_name
     
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -152,9 +151,8 @@ def create_gumroad_package(plugin_zip_path):
     with open(license_txt, 'w') as f:
         f.write(create_license_txt())
     
-    # Create the final Gumroad zip
-    timestamp = datetime.now().strftime("%Y%m%d")
-    gumroad_zip = DIST_DIR / f"LipKit_v0.1.0_{timestamp}.zip"
+    # Create the final Gumroad zip - predictable name
+    gumroad_zip = DIST_DIR / "lipkit-release.zip"
     
     with zipfile.ZipFile(gumroad_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for file_path in STAGING_DIR.iterdir():
@@ -183,11 +181,11 @@ def main():
     print("BUILD COMPLETE")
     print("="*50)
     print(f"\n📁 Location: {DIST_DIR}")
-    print(f"\n📦 For Gumroad: {gumroad_zip.name}")
-    print(f"   → Users download this one file")
-    print(f"   → Extract to get plugin + instructions")
-    print(f"\n🔧 For Testing: {plugin_zip.name}")
-    print(f"   → Raw plugin (no instructions)")
+    print(f"\n📦 Release Package: {gumroad_zip.name}")
+    print(f"   → Includes: plugin + INSTALL.txt + LICENSE.txt")
+    print(f"   → Stable filename for Gumroad/releases")
+    print(f"\n🔧 Plugin Only: {plugin_zip.name}")
+    print(f"   → For direct Blender installation")
     print("\n" + "="*50)
 
 if __name__ == "__main__":
