@@ -1,17 +1,22 @@
 """
 LipKit - Universal Lip Sync Extension for Blender
 Supports both 2D (Grease Pencil) and 3D (Shape Keys) workflows
-"""
 
-bl_info = {
-    "name": "LipKit",
-    "author": "LipKit Team",
-    "version": (0, 1, 0),
-    "blender": (4, 2, 0),
-    "location": "View3D > Sidebar > LipKit",
-    "description": "Universal lip sync system for 2D and 3D animations",
-    "category": "Animation",
-}
+Copyright (C) 2024-2025 Shayan Moradi
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
 import bpy
 from . import (

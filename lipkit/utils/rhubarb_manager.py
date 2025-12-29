@@ -1,6 +1,9 @@
 """
 Rhubarb Lip Sync Manager
 Handles automatic download, extraction, and setup of Rhubarb
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import os
@@ -9,6 +12,20 @@ import json
 from pathlib import Path
 from typing import Tuple, Optional
 import platform
+import bpy
+
+
+def is_online_access_allowed() -> bool:
+    """
+    Check if online access is allowed by user preference.
+    Required by Blender Extension Guidelines (Rule 4.2).
+    
+    Returns:
+        True if online access is permitted, False otherwise
+    """
+    # bpy.app.online_access is read-only and reflects user preference
+    # plus any command-line overrides (--offline-mode / --online-mode)
+    return getattr(bpy.app, 'online_access', True)
 
 
 def get_rhubarb_cache_dir() -> Path:
@@ -114,13 +131,19 @@ def get_rhubarb_executable() -> Optional[str]:
 
 def get_latest_rhubarb_release() -> Optional[dict]:
     """
-    Fetch latest Rhubarb release info from GitHub API
+    Fetch latest Rhubarb release info from GitHub API.
+    Respects user's online access preference.
     
     Returns:
         Dict with 'version', 'download_url', 'filename'
         or None if unable to fetch
     """
     import urllib.request
+    
+    # Check online access permission first
+    if not is_online_access_allowed():
+        print("LipKit: Online access disabled - cannot fetch Rhubarb release info")
+        return None
     
     try:
         url = "https://api.github.com/repos/DanielSWolf/rhubarb-lip-sync/releases/latest"
@@ -172,7 +195,8 @@ def get_latest_rhubarb_release() -> Optional[dict]:
 
 def download_rhubarb() -> Tuple[bool, str]:
     """
-    Download and extract latest Rhubarb release
+    Download and extract latest Rhubarb release.
+    Respects user's online access preference per Blender Extension Guidelines.
     
     Returns:
         (success, message_or_path)
@@ -180,6 +204,15 @@ def download_rhubarb() -> Tuple[bool, str]:
     import urllib.request
     import zipfile
     import tarfile
+    
+    # Check online access permission (Blender Extension Guidelines Rule 4.2)
+    if not is_online_access_allowed():
+        return False, (
+            "Online access is disabled in Blender preferences.\n"
+            "Enable 'Allow Online Access' in Edit → Preferences → System,\n"
+            "or download Rhubarb manually from:\n"
+            "https://github.com/DanielSWolf/rhubarb-lip-sync/releases"
+        )
     
     # Get release info
     release_info = get_latest_rhubarb_release()

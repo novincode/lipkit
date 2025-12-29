@@ -1,5 +1,8 @@
 """
 Local phoneme provider - uses local tools for phoneme extraction
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import subprocess

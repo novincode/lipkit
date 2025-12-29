@@ -1,9 +1,16 @@
 """
 Addon preferences for LipKit
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import bpy
 from bpy.props import StringProperty, BoolProperty, EnumProperty
+
+
+# Store the package name at module level for reliable access
+_package_name = __package__
 
 
 class PreferencesDefaults:
@@ -34,7 +41,8 @@ class PreferencesDefaults:
 
 
 class LipKitPreferences(bpy.types.AddonPreferences):
-    bl_idname = "lipkit"
+    # Use __package__ for proper extension namespace support
+    bl_idname = _package_name
     
     # Rhubarb Setup Mode
     rhubarb_mode: EnumProperty(
@@ -135,14 +143,14 @@ class LipKitPreferences(bpy.types.AddonPreferences):
         
         layout.separator()
         
-        # Cloud API Section
+        # Cloud API Section (Optional)
         box = layout.box()
-        box.label(text="LipKit Cloud API (Premium)", icon='WORLD')
+        box.label(text="LipKit Cloud API (Optional)", icon='WORLD')
         box.prop(self, "api_key")
         box.prop(self, "api_endpoint")
         
         if not self.api_key:
-            box.label(text="Get API key at lipkit.dev", icon='URL')
+            box.label(text="Optional: Get API key at lipkit.dev", icon='URL')
         
         layout.separator()
         
@@ -159,13 +167,19 @@ def get_preferences(context=None):
     try:
         addons = context.preferences.addons
         
-        # Try direct name first
+        # Try with the actual package name first (extension format)
+        if _package_name in addons:
+            prefs = addons[_package_name].preferences
+            if prefs is not None:
+                return prefs
+        
+        # Fallback: Try direct name
         if "lipkit" in addons:
             prefs = addons["lipkit"].preferences
             if prefs is not None:
                 return prefs
         
-        # Try with package name if it's an extension
+        # Try with package name pattern if it's an extension (bl_ext.repo.lipkit)
         for addon_name in addons.keys():
             if "lipkit" in addon_name.lower():
                 prefs = addons[addon_name].preferences

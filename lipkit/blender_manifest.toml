@@ -6,15 +6,28 @@ tagline = "Universal Lip Sync for 2D & 3D"
 version = "1.1.0"
 type = "add-on"
 
-maintainer = "LipKit <contact@lipkit.dev>"
-license = ["Proprietary"]
+maintainer = "Shayan Moradi <ideyenovin@gmail.com>"
+website = "https://github.com/shayanmoradi/lipsync-blender"
+
+# GPL-3.0-or-later is REQUIRED for Blender Extensions Platform
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = [
+  "2024-2025 Shayan Moradi",
+]
 
 blender_version_min = "4.2.0"
 
-# Tags as simple list (required format)
-tags = ["animation", "rigging", "lip-sync", "grease-pencil"]
+# Tags must be from official Blender list (case-sensitive)
+tags = ["Animation", "Rigging", "Grease Pencil"]
 
 [permissions]
-network = "Access phoneme extraction API"
-files = "Read audio files and write presets"
-clipboard = "Copy/paste mapping presets"
+network = "Download Rhubarb lip sync tool from GitHub"
+files = "Read audio files and save phoneme cache"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".git/",
+  "*.zip",
+  "*.pyc",
+]

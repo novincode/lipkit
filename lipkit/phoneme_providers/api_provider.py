@@ -1,16 +1,25 @@
 """
-API-based phoneme provider for premium cloud service
+API-based phoneme provider for cloud service
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import json
+import bpy
 from typing import List, Optional
 from ..core import PhonemeProvider, LipSyncData, PhonemeData, NetworkError, ExtractionError, AudioFileError
+
+
+def is_online_access_allowed() -> bool:
+    """Check if online access is allowed per Blender preferences"""
+    return getattr(bpy.app, 'online_access', True)
 
 
 class APIPhonemeProvider(PhonemeProvider):
     """
     Cloud API phoneme extraction service
-    This is the PREMIUM option - requires API key and internet
+    Requires API key and internet access
     """
     
     def __init__(
@@ -30,19 +39,21 @@ class APIPhonemeProvider(PhonemeProvider):
     
     @property
     def name(self) -> str:
-        return "LipKit Cloud API (Premium)"
+        return "LipKit Cloud API"
     
     @property
     def description(self) -> str:
-        return "High-accuracy cloud-based phoneme extraction with multi-language support."
+        return "Cloud-based phoneme extraction with multi-language support."
     
     def is_available(self) -> bool:
-        """Check if API is available and key is valid"""
+        """Check if API is available, key is valid, and online access is permitted"""
         if not self.api_key:
             return False
         
-        # Would ping API health endpoint
-        # For now, just check if key exists
+        # Check online access permission (Blender Extension Guidelines Rule 4.2)
+        if not is_online_access_allowed():
+            return False
+        
         return len(self.api_key) > 0
     
     def get_supported_languages(self) -> List[str]:

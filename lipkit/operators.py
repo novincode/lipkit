@@ -1,5 +1,8 @@
 """
 Operators for LipKit
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import bpy
@@ -88,7 +91,7 @@ class LIPKIT_OT_open_preferences(bpy.types.Operator):
 
 
 class LIPKIT_OT_download_rhubarb(bpy.types.Operator):
-    """Download and install Rhubarb automatically"""
+    """Download and install Rhubarb automatically (requires internet access)"""
     bl_idname = "lipkit.download_rhubarb"
     bl_label = "Download Rhubarb"
     bl_options = {'REGISTER'}
@@ -96,7 +99,19 @@ class LIPKIT_OT_download_rhubarb(bpy.types.Operator):
     # Timer for checking download progress
     _timer = None
     
+    @classmethod
+    def poll(cls, context):
+        """Check if online access is allowed"""
+        return getattr(bpy.app, 'online_access', True)
+    
     def execute(self, context):
+        # Double-check online access (Blender Extension Guidelines Rule 4.2)
+        if not getattr(bpy.app, 'online_access', True):
+            self.report({'ERROR'}, 
+                "Online access is disabled. Enable 'Allow Online Access' in "
+                "Edit → Preferences → System, or download Rhubarb manually.")
+            return {'CANCELLED'}
+        
         # Start download in background
         import threading
         

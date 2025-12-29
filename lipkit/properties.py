@@ -1,5 +1,8 @@
 """
 Blender property groups for LipKit
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 
 import bpy

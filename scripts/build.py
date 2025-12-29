@@ -1,192 +1,113 @@
 #!/usr/bin/env python3
 """
-Build script for LipKit
-Creates: 
-  1. lipkit.zip - The plugin itself (predictable name)
-  2. lipkit-release.zip - Full release with README + LICENSE (predictable name)
+Build script for LipKit Blender Extension
+
+Creates a single lipkit.zip that works for:
+  - Blender Extensions Platform (extensions.blender.org)
+  - GitHub releases
+  - Direct "Install from Disk" installation
+
+Copyright (C) 2024-2025 Shayan Moradi
+SPDX-License-Identifier: GPL-3.0-or-later
 """
 import os
 import zipfile
 import shutil
 from pathlib import Path
-from datetime import datetime
 
 # Paths
 REPO_ROOT = Path(__file__).parent.parent
 LIPKIT_SOURCE = REPO_ROOT / "lipkit"
 BUILD_DIR = REPO_ROOT / "build"
 DIST_DIR = BUILD_DIR / "dist"
-STAGING_DIR = BUILD_DIR / "staging"
 
-def create_plugin_zip():
-    """Create lipkit.zip - the raw plugin"""
+# Files/folders to exclude from the build
+EXCLUDE_PATTERNS = [
+    '__pycache__',
+    '.pyc',
+    '.git',
+    '.DS_Store',
+    'Thumbs.db',
+]
+
+
+def should_exclude(path: Path) -> bool:
+    """Check if a path should be excluded from the build"""
+    path_str = str(path)
+    for pattern in EXCLUDE_PATTERNS:
+        if pattern in path_str:
+            return True
+    return False
+
+
+def create_extension_zip():
+    """
+    Create lipkit.zip - the Blender extension package.
     
+    This single zip works for:
+    - extensions.blender.org submission
+    - GitHub releases  
+    - Direct installation via "Install from Disk"
+    """
     zip_name = "lipkit.zip"
     zip_path = DIST_DIR / zip_name
     
+    print(f"📦 Building {zip_name}...")
+    
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(LIPKIT_SOURCE):
-            dirs[:] = [d for d in dirs if d != '__pycache__']
+            # Filter out excluded directories
+            dirs[:] = [d for d in dirs if not should_exclude(Path(d))]
             
             for file in files:
-                if file.endswith('.pyc'):
-                    continue
                 file_path = Path(root) / file
+                
+                if should_exclude(file_path):
+                    continue
+                
+                # Archive path: lipkit/...
                 arcname = Path("lipkit") / file_path.relative_to(LIPKIT_SOURCE)
                 zipf.write(file_path, arcname)
-    
+                
     return zip_path
 
-def create_install_txt():
-    """Create simple text instructions"""
-    return """LipKit - Installation Guide
-============================
-
-STEP 1: Extract Files
-You've already extracted this! Inside you'll find:
-  • lipkit_v0.1.0_[date].zip (the plugin)
-  • INSTALL.txt (this file)
-  • LICENSE.txt
-
-
-STEP 2: Install Plugin in Blender
-1. Open Blender 4.2 or newer
-2. Go to: Edit → Preferences → Get Extensions
-3. Click the button: "Install from Disk"
-4. Select: lipkit_v0.1.0_[date].zip
-5. Wait for installation to complete
-
-
-STEP 3: Enable LipKit
-1. Go to: Edit → Preferences → Add-ons
-2. Search for "LipKit"
-3. Click the checkbox next to LipKit to enable it
-
-
-STEP 4: Open LipKit
-1. Press N in the 3D viewport (right side panel opens)
-2. Click the "LipKit" tab
-3. You're ready to use it!
-
-
-RHUBARB SETUP (One-time setup)
-==============================
-LipKit automatically downloads and sets up Rhubarb on first use.
-
-If automatic download fails (you'll see an error):
-
-1. Visit: https://github.com/DanielSWolf/rhubarb-lip-sync/releases
-2. Download the latest version for your OS (macOS/Windows/Linux)
-3. Extract the ZIP file
-4. In Blender:
-   - Open LipKit panel (Press N)
-   - Look for "Rhubarb Lip Sync Tool" section at the top
-   - Click "📁 Select Rhubarb" button
-   - Navigate to the extracted folder
-   - It will show ✅ Ready when done
-
-
-NEED HELP?
-==========
-• Website: https://codeideal.com/contact
-• Email: ideyenovin@gmail.com
-
-Enjoy! 🎬
-"""
-
-def create_license_txt():
-    """Create license as .txt"""
-    return """LipKit License Agreement
-========================
-
-WHAT YOU GET:
-• Professional lip sync plugin for Blender
-• Works with 2D (Grease Pencil) and 3D (Shape Keys)
-• Lifetime updates to v0.x series
-
-
-WHAT YOU CAN DO:
-✓ Use in personal projects
-✓ Use in commercial projects
-✓ Use for client/freelance work
-✓ Sell animations created WITH LipKit
-✓ Use on multiple personal computers
-
-
-WHAT YOU CANNOT DO:
-✗ Share or redistribute the plugin
-✗ Resell LipKit as your own
-✗ Modify and sell as a different product
-✗ Share your license key
-✗ Use on shared/team computers (1 license = 1 person)
-
-
-SUPPORT:
-Contact us at:
-• Website: https://codeideal.com/contact
-• Email: ideyenovin@gmail.com
-
-
----
-Thank you for supporting independent software! 🎬
-"""
-
-def create_gumroad_package(plugin_zip_path):
-    """Create the Gumroad download package"""
-    
-    # Clean staging
-    if STAGING_DIR.exists():
-        shutil.rmtree(STAGING_DIR)
-    STAGING_DIR.mkdir(exist_ok=True)
-    
-    # Copy plugin zip to staging
-    shutil.copy2(plugin_zip_path, STAGING_DIR / plugin_zip_path.name)
-    
-    # Create text files
-    install_txt = STAGING_DIR / "INSTALL.txt"
-    with open(install_txt, 'w') as f:
-        f.write(create_install_txt())
-    
-    license_txt = STAGING_DIR / "LICENSE.txt"
-    with open(license_txt, 'w') as f:
-        f.write(create_license_txt())
-    
-    # Create the final Gumroad zip - predictable name
-    gumroad_zip = DIST_DIR / "lipkit-release.zip"
-    
-    with zipfile.ZipFile(gumroad_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for file_path in STAGING_DIR.iterdir():
-            arcname = file_path.name
-            zipf.write(file_path, arcname)
-    
-    return gumroad_zip
 
 def main():
     # Create directories
     BUILD_DIR.mkdir(exist_ok=True)
     DIST_DIR.mkdir(exist_ok=True)
     
-    # Step 1: Build plugin zip
-    print("🔨 Building plugin zip...")
-    plugin_zip = create_plugin_zip()
-    print(f"✅ Plugin: {plugin_zip.name}")
+    # Clean previous build
+    for old_zip in DIST_DIR.glob("*.zip"):
+        old_zip.unlink()
     
-    # Step 2: Create Gumroad package
-    print("📦 Creating Gumroad package...")
-    gumroad_zip = create_gumroad_package(plugin_zip)
-    print(f"✅ Gumroad: {gumroad_zip.name}")
+    # Build extension zip
+    zip_path = create_extension_zip()
+    
+    # Get version from manifest
+    version = "unknown"
+    manifest_path = LIPKIT_SOURCE / "blender_manifest.toml"
+    if manifest_path.exists():
+        with open(manifest_path, 'r') as f:
+            for line in f:
+                if line.startswith('version'):
+                    version = line.split('=')[1].strip().strip('"')
+                    break
     
     # Summary
-    print("\n" + "="*50)
-    print("BUILD COMPLETE")
-    print("="*50)
-    print(f"\n📁 Location: {DIST_DIR}")
-    print(f"\n📦 Release Package: {gumroad_zip.name}")
-    print(f"   → Includes: plugin + INSTALL.txt + LICENSE.txt")
-    print(f"   → Stable filename for Gumroad/releases")
-    print(f"\n🔧 Plugin Only: {plugin_zip.name}")
-    print(f"   → For direct Blender installation")
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
+    print("✅ BUILD COMPLETE")
+    print("=" * 50)
+    print(f"\n📁 Output: {DIST_DIR}")
+    print(f"📦 Package: {zip_path.name}")
+    print(f"🏷️  Version: {version}")
+    print(f"📊 Size: {zip_path.stat().st_size / 1024:.1f} KB")
+    print("\n📋 This package is ready for:")
+    print("   • extensions.blender.org submission")
+    print("   • GitHub releases")
+    print("   • Direct installation (Edit → Preferences → Get Extensions → Install from Disk)")
+    print("=" * 50)
+
 
 if __name__ == "__main__":
     main()

@@ -19,19 +19,12 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Build plugin
+      - name: Build extension
         run: python scripts/build.py
       
       - name: Get version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      
-      - name: Get built zip file
-        id: zip
-        run: |
-          ZIP_FILE=$(ls build/dist/lipkit-release.zip)
-          echo "ZIP_PATH=$ZIP_FILE" >> $GITHUB_OUTPUT
-          echo "ZIP_NAME=$(basename $ZIP_FILE)" >> $GITHUB_OUTPUT
       
       - name: Create Release with Asset
         env:
@@ -40,22 +33,26 @@ jobs:
           cat > /tmp/release_notes.md << 'EOF'
           # LipKit v${{ steps.version.outputs.VERSION }}
           
-          Automatic lip sync for Blender 🎬
+          Universal Lip Sync for Blender 🎬
           
           ## Installation
-          1. Download the `lipkit_*.zip` file below
+          1. Download `lipkit.zip` below
           2. Open Blender 4.2+
           3. Go to **Edit → Preferences → Get Extensions → Install from Disk**
           4. Select the downloaded ZIP file
           5. Enable **LipKit** in the Extensions list
           
           ## Quick Start
-          - Press **N** to open the LipKit panel
+          - Press **N** in 3D View to open sidebar
+          - Click **LipKit** tab
           - Download Rhubarb (automatic or manual)
           - Load your audio and generate lip sync!
+          
+          ## License
+          GPL-3.0-or-later - Free and Open Source
           EOF
           
           gh release create ${{ github.ref_name }} \
             --title "LipKit v${{ steps.version.outputs.VERSION }}" \
             --notes-file /tmp/release_notes.md \
-            "${{ steps.zip.outputs.ZIP_PATH }}"
+            "build/dist/lipkit.zip"
