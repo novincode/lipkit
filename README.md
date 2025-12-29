@@ -5,7 +5,7 @@
 Real phoneme extraction using **Rhubarb Lip Sync**. Clean timeline. Professional animation.
 
 **Works with:** Blender 4.2+ | Shape Keys | Grease Pencil
-> **[📥 Download Latest Release](https://github.com/novincode/lipsync-blender/releases/latest)**
+> **[📥 Download Latest Release](https://github.com/novincode/lipkit/releases/latest)**
 ---
 
 ## �� Installation
