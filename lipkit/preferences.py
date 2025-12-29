@@ -19,10 +19,6 @@ class PreferencesDefaults:
         self.use_cache = True
         self.local_tool_path = ""
         self.rhubarb_mode = "auto"
-        self.api_key = ""
-        self.api_endpoint = "https://api.lipkit.dev/v1/phonemes"
-        self.custom_api_endpoint = ""
-        self.custom_api_key = ""
         self.debug_mode = False
     
     def __getattr__(self, name):
@@ -31,10 +27,6 @@ class PreferencesDefaults:
             'rhubarb_mode': 'auto',
             'use_cache': True,
             'local_tool_path': '',
-            'api_key': '',
-            'api_endpoint': 'https://api.lipkit.dev/v1/phonemes',
-            'custom_api_endpoint': '',
-            'custom_api_key': '',
             'debug_mode': False,
         }
         return defaults.get(name, None)
@@ -67,34 +59,6 @@ class LipKitPreferences(bpy.types.AddonPreferences):
         name="Use Cache",
         description="Cache phoneme extraction results to speed up re-generation",
         default=True
-    )
-    
-    # API Settings
-    api_key: StringProperty(
-        name="API Key",
-        description="API key for LipKit Cloud service",
-        default="",
-        subtype='PASSWORD'
-    )
-    
-    api_endpoint: StringProperty(
-        name="API Endpoint",
-        description="Cloud API endpoint URL",
-        default="https://api.lipkit.dev/v1/phonemes"
-    )
-    
-    # Custom API
-    custom_api_endpoint: StringProperty(
-        name="Custom API Endpoint",
-        description="Your own phoneme extraction API endpoint",
-        default=""
-    )
-    
-    custom_api_key: StringProperty(
-        name="Custom API Key",
-        description="API key for custom endpoint",
-        default="",
-        subtype='PASSWORD'
     )
     
     # Debug Settings
@@ -140,17 +104,6 @@ class LipKitPreferences(bpy.types.AddonPreferences):
                 box2.label(text=f"Path set to: {self.local_tool_path}", icon='CHECKMARK')
         
         box.prop(self, "use_cache")
-        
-        layout.separator()
-        
-        # Cloud API Section (Optional)
-        box = layout.box()
-        box.label(text="LipKit Cloud API (Optional)", icon='WORLD')
-        box.prop(self, "api_key")
-        box.prop(self, "api_endpoint")
-        
-        if not self.api_key:
-            box.label(text="Optional: Get API key at lipkit.dev", icon='URL')
         
         layout.separator()
         

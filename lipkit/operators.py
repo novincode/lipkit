@@ -12,7 +12,7 @@ import traceback
 from .core.controller import LipSyncController
 from .core.animation_engine import AnimationEngine
 from .core.mapping import PhonemeMapping, PresetManager
-from .phoneme_providers import LocalPhonemeProvider, APIPhonemeProvider, CustomAPIProvider
+from .phoneme_providers import LocalPhonemeProvider
 from .utils import audio_utils
 from .utils import phoneme_storage
 from .preferences import get_preferences
