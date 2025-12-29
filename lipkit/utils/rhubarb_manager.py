@@ -29,15 +29,55 @@ def is_online_access_allowed() -> bool:
 
 
 def get_rhubarb_cache_dir() -> Path:
-    """Get the directory where Rhubarb should be installed"""
-    if platform.system() == "Darwin":  # macOS
-        cache_dir = Path.home() / "Library" / "Application Support" / "Blender" / "lipkit_rhubarb"
-    elif platform.system() == "Windows":
-        cache_dir = Path.home() / "AppData" / "Local" / "Blender" / "lipkit_rhubarb"
-    else:  # Linux
-        cache_dir = Path.home() / ".local" / "share" / "Blender" / "lipkit_rhubarb"
-    
-    return cache_dir
+    """Get the directory where Rhubarb should be installed.
+
+    Blender extensions must not assume their own directory is writable.
+    Prefer Blender's per-user extension directory so it survives upgrades.
+    """
+    # Blender 4.2+ provides bpy.utils.extension_path_user.
+    try:
+        # We want the top-level extension package id ("lipkit"), not "lipkit.utils".
+        try:
+            from .. import __package__ as base_package
+            package_id = base_package
+        except Exception:
+            package_id = (__package__ or "").split('.')[0] or "lipkit"
+
+        base_dir = bpy.utils.extension_path_user(package_id, path="", create=True)
+        return Path(base_dir) / "rhubarb"
+    except Exception:
+        # Fallback: keep previous behavior if Blender API changes or is unavailable.
+        if platform.system() == "Darwin":  # macOS
+            return Path.home() / "Library" / "Application Support" / "Blender" / "lipkit_rhubarb"
+        if platform.system() == "Windows":
+            return Path.home() / "AppData" / "Local" / "Blender" / "lipkit_rhubarb"
+        return Path.home() / ".local" / "share" / "Blender" / "lipkit_rhubarb"
+
+
+def _is_within_directory(base_dir: Path, target_path: Path) -> bool:
+    """Return True if target_path is within base_dir after resolving."""
+    try:
+        base_resolved = base_dir.resolve()
+        target_resolved = target_path.resolve()
+        return str(target_resolved).startswith(str(base_resolved) + os.sep) or target_resolved == base_resolved
+    except Exception:
+        return False
+
+
+def _safe_extract_zip(zip_ref, dest_dir: Path) -> None:
+    for member in zip_ref.infolist():
+        member_path = dest_dir / member.filename
+        if not _is_within_directory(dest_dir, member_path):
+            raise ValueError(f"Unsafe path in zip: {member.filename}")
+    zip_ref.extractall(dest_dir)
+
+
+def _safe_extract_tar(tar_ref, dest_dir: Path) -> None:
+    for member in tar_ref.getmembers():
+        member_path = dest_dir / member.name
+        if not _is_within_directory(dest_dir, member_path):
+            raise ValueError(f"Unsafe path in tar: {member.name}")
+    tar_ref.extractall(dest_dir)
 
 
 def get_effective_rhubarb_path(props=None, prefs=None) -> Optional[str]:
@@ -239,11 +279,11 @@ def download_rhubarb() -> Tuple[bool, str]:
         
         if filename.endswith('.zip'):
             with zipfile.ZipFile(download_path, 'r') as zip_ref:
-                zip_ref.extractall(cache_dir)
+                _safe_extract_zip(zip_ref, cache_dir)
         
         elif filename.endswith('.tar.gz') or filename.endswith('.tgz'):
             with tarfile.open(download_path, 'r:gz') as tar_ref:
-                tar_ref.extractall(cache_dir)
+                _safe_extract_tar(tar_ref, cache_dir)
         
         else:
             return False, f"Unsupported archive format: {filename}"

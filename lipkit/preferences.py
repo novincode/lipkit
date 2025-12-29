@@ -44,7 +44,8 @@ class LipKitPreferences(bpy.types.AddonPreferences):
             ('auto', 'Auto (Recommended)', 'Automatically download and manage Rhubarb'),
             ('manual', 'Manual', 'Manually select Rhubarb folder'),
         ],
-        default='auto'
+        # Default to manual for maximum platform compatibility.
+        default='manual'
     )
     
     # Local Tool Settings
