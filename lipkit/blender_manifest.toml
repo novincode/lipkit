@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 id = "lipkit"
 name = "LipKit"
 tagline = "Universal Lip Sync for 2D & 3D"
-version = "1.1.0"
+version = "1.2.1"
 type = "add-on"
 
 maintainer = "Shayan Moradi <ideyenovin@gmail.com>"
@@ -21,8 +21,8 @@ blender_version_min = "4.2.0"
 tags = ["Animation", "Rigging", "Grease Pencil"]
 
 [permissions]
-network = "Download Rhubarb lip sync tool from GitHub"
-files = "Read audio files and save phoneme cache"
+network = "User-initiated download of the optional Rhubarb binary (only when you click Download; respects Blender's Online Access setting; no telemetry)"
+files = "Read local audio files and write local phoneme cache / Rhubarb files in the user's extension data directory"
 
 [build]
 paths_exclude_pattern = [
